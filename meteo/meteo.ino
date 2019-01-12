@@ -8,12 +8,21 @@
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 
-IPAddress server(192,168,0,103);  // numeric IP for Google (no DNS)
-//char server[] = "raspberrypi.local";    // name address for Google (using DNS)
+IPAddress server(192,168,0,103);  // numeric IP
+//char server[] = "raspberrypi.local";    // name address
 
 const char* host = "192.168.0.103";
 
-long towait = 1000*60*10;
+unsigned long towait = 1000UL*60*10;
+unsigned long iter = towait - 1000UL*10;
+
+const float drop = 2.5;
+
+bool debug = false;
+
+float rain = 0.0;
+float rainV[60];
+unsigned long itert = 0;
 
 IPAddress ip(192, 168, 0, 177);
 
@@ -28,6 +37,8 @@ Adafruit_BMP085 bmp;
 
 #define DHTPIN            2         // Pin which is connected to the DHT sensor.
 #define DHTTYPE           DHT22     // DHT 22 (AM2302)
+
+#define RAINPIN           8         //Pin connected to the rain gauge
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
 
@@ -46,79 +57,99 @@ void setup() {
         Serial.println("Could not find a valid BMP085 sensor, check wiring!");
         while (1) {}
     }
+    pinMode(RAINPIN, INPUT);
+    for (int i = 0; i < 60; i++) rainV[i] = 0.0;
     sensor_t sensor;
     dht.temperature().getSensor(&sensor);
     dht.humidity().getSensor(&sensor);
     delayMS = sensor.min_delay / 1000;
-    
+    delay(delayMS);
 }
 
 void loop() {
-    
-    float pressure = bmp.readPressure()/100;
-    Serial.print("Pressure = ");
-    Serial.print(pressure);
-    Serial.println(" hPa");
-    
-    delay(delayMS);
-    
-    float temperature = 0.0;
-    sensors_event_t event;  
-    dht.temperature().getEvent(&event);
-    if (isnan(event.temperature)) {
-        Serial.println("Error reading temperature!");
+    delay(100);
+    iter = iter + 100;
+    itert = itert + 100;
+    if (digitalRead(RAINPIN) == HIGH) {
+        rain = rain + drop;
     }
-    else {
-        temperature = (bmp.readTemperature()+event.temperature)/2;
-        Serial.print("Temperature: ");
-        Serial.print(temperature);
-        Serial.println(" °C");
+    if (itert >= (1000UL*60) && itert % (1000UL*60) == 0) {
+        int i = (itert / (1000UL*60))-1;
+        rainV[i] = rain;
+        rain = 0;
+    }
+    if (itert > 1000UL*60*60) {
+        itert = 0;
     }
     
-    float humidity = 0.0;
-    dht.humidity().getEvent(&event);
-    if (isnan(event.relative_humidity)) {
-        Serial.println("Error reading humidity!");
-    }
-    else {
-        humidity = event.relative_humidity;
-        Serial.print("Humidity: ");
-        Serial.print(humidity);
-        Serial.println("%");
-    }
-    
-    
-    // Make a HTTP request:
-    if (client.connect(server, 80)) {
+    if (iter > towait) {
+        /*Serial.println(iter);
+         *        Serial.println(towait);*/
+        float pressure = bmp.readPressure()/100;
+        if (debug) {
+            Serial.print("Pressure = ");
+            Serial.print(pressure);
+            Serial.println(" hPa");
+        }
         
-        String pval = String(pressure, DEC);
-        String tval = String(temperature, DEC);
-        String hval = String(humidity, DEC);
-        client.print("GET /write-values.php?temperature=" + tval + "&pressure=" + pval + "&humidity=" + hval + " HTTP/1.1\r\n" +
-        "Host: " + host + "\r\n" +
-        "Connection: close\r\n\r\n");
-        Serial.println("connected");
+        float temperature = 0.0;
+        sensors_event_t event;  
+        dht.temperature().getEvent(&event);
+        if (!isnan(event.temperature)) {
+            temperature = (bmp.readTemperature()+event.temperature)/2;
+            if (debug) {
+                Serial.print("Temperature: ");
+                Serial.print(temperature);
+                Serial.println(" °C");
+            }
+        }
         
+        float humidity = 0.0;
+        dht.humidity().getEvent(&event);
+        if (!isnan(event.relative_humidity)) {
+            humidity = event.relative_humidity;
+            if (debug) {
+                Serial.print("Humidity: ");
+                Serial.print(humidity);
+                Serial.println("%");
+            }
+        }
         
-        client.println();
-    } else {
-        // if you didn't get a connection to the server:
-        Serial.println("connection failed");
-    }
-    // if there are incoming bytes available
-    // from the server, read them and print them:
-    if (client.available()) {
-        char c = client.read();
-        Serial.print(c);
+        float tmprain = 0.0;
+        for (int i =0 ; i < 60; i++) tmprain = tmprain + rainV[i];
+        if (debug) {
+            Serial.print("Rain mm/h: ");
+            Serial.println(tmprain);
+        }
+        
+        // Make a HTTP request:
+        if (client.connect(server, 80)) {
+            String pval = String(pressure, DEC);
+            String tval = String(temperature, DEC);
+            String hval = String(humidity, DEC);
+            String rval = String(tmprain, DEC);
+            client.print("GET /write-values.php?temperature=" + tval + "&pressure=" + pval + "&humidity=" + hval + "&rain=" + rval + " HTTP/1.1\r\n" +
+            "Host: " + host + "\r\n" +
+            "Connection: close\r\n\r\n");
+            //Serial.println("connected");
+            client.println();
+        } else {
+            Serial.println("connection failed");
+        }
+        
+        if (client.available()) {
+            //char c = client.read();
+            //Serial.print(c);
+            delay(10);
+        }
+        
+        // if the server's disconnected, stop the client:
+        if (!client.connected()) {
+            //Serial.println();
+            //Serial.println("disconnecting.");
+            client.stop();
+        }
+        iter = 0;
     }
     
-    // if the server's disconnected, stop the client:
-    if (!client.connected()) {
-        Serial.println();
-        Serial.println("disconnecting.");
-        client.stop();
-        
-        // do nothing forevermore:
-        delay(towait);
-    }
 }
