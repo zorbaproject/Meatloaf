@@ -13,7 +13,7 @@ IPAddress server(192,168,0,103);  // numeric IP
 
 const char* host = "192.168.0.103";
 
-unsigned long towait = 1000UL*60*10;
+unsigned long towait = 1000UL*60*5;
 unsigned long iter = towait - 1000UL*10;
 
 const float drop = 2.5;
@@ -122,33 +122,39 @@ void loop() {
             Serial.println(tmprain);
         }
         
+        if (!client.connected()) {
+            //Serial.println();
+            //Serial.println("disconnecting.");
+            client.stop();
+        }
         // Make a HTTP request:
         if (client.connect(server, 80)) {
             String pval = String(pressure, DEC);
             String tval = String(temperature, DEC);
             String hval = String(humidity, DEC);
             String rval = String(tmprain, DEC);
-            client.print("GET /write-values.php?temperature=" + tval + "&pressure=" + pval + "&humidity=" + hval + "&rain=" + rval + " HTTP/1.1\r\n" +
-            "Host: " + host + "\r\n" +
-            "Connection: close\r\n\r\n");
-            //Serial.println("connected");
+            client.println("GET /write-values.php?temperature=" + tval + "&pressure=" + pval + "&humidity=" + hval + "&rain=" + rval + " HTTP/1.1");
+            client.println("Host: " + String(host));
+            client.println("Connection: keep-open");
             client.println();
+            //Serial.println("connected");
         } else {
             Serial.println("connection failed");
-        }
-        
-        if (client.available()) {
-            //char c = client.read();
-            //Serial.print(c);
-            delay(10);
-        }
-        
-        // if the server's disconnected, stop the client:
-        if (!client.connected()) {
-            //Serial.println();
-            //Serial.println("disconnecting.");
             client.stop();
         }
+        
+        /*if (client.available()) {
+         *            //char c = client.read();
+         *            //Serial.print(c);
+         *            delay(10);
+    }*/
+        /*
+         *        // if the server's disconnected, stop the client:
+         *        if (!client.connected()) {
+         *            //Serial.println();
+         *            //Serial.println("disconnecting.");
+         *            client.stop();
+    }*/
         iter = 0;
     }
     
