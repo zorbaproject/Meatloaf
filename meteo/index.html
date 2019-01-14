@@ -1,7 +1,7 @@
 <html>
   <head>
     <title></title>
-    <title>Simple data visualization</title>
+    <title>Stazione Meteo Talpe del Carso</title>
     <meta content="">
       <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Ubuntu:regular,bold&subset=Latin">
 <style type="text/css">
@@ -192,9 +192,6 @@ border: 1px solid white;
     
     //grafici: http://www.chartjs.org/
     
-    // www.zorbaproject.org/eos-yun
-    
-    
     
     
     
@@ -381,7 +378,7 @@ border: 1px solid white;
                 }
                 
                 
-                var lastphrase = "L'ultimo dato rilevato &egrave; temperatura "+myObject[tot-1][3]+"&deg;C, pressione "+myObject[tot-1][5]+"hPa, umidit&agrave; "+myObject[tot-1][7]+"%, pioggia "+myObject[tot-1][9]+"mm/h, e risale alle ore ";
+                var lastphrase = "L'ultimo dato rilevato &egrave; temperatura "+myObject[tot-1][3].substring(0,myObject[tot-1][3].indexOf('.')+3)+"&deg;C, pressione "+myObject[tot-1][5].substring(0,myObject[tot-1][5].indexOf('.')+3)+"hPa, umidit&agrave; "+myObject[tot-1][7].substring(0,myObject[tot-1][7].indexOf('.')+3)+"%, pioggia "+myObject[tot-1][9].substring(0,myObject[tot-1][9].indexOf('.')+3)+"mm/h, e risale alle ore ";
                 lastphrase += myObject[tot-1][1];
                 lastphrase += " del giorno ";
                 lastphrase += myObject[tot-1][0];
@@ -415,7 +412,7 @@ border: 1px solid white;
                 hcell4.setAttribute("style", "background-color:green;color: white;");
                 hcell5.setAttribute("style", "background-color:green;color: white;");
                 
-                var maxitemschart = 36;                                    //last 6 minutes
+                var maxitemschart = 36;                                    
                 var chartdifference = tot - maxitemschart;
                 var ic = 0;
                 
