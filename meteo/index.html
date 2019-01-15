@@ -295,7 +295,10 @@ border: 1px solid white;
         //var actualpage = self.location.href;
         setTimeout('loadpage()',10000);
         
-        var chartdata = new Array();
+        var chartdatat = new Array();
+        var chartdatap = new Array();
+        var chartdatah = new Array();
+        var chartdatar = new Array();
         
         var charttemp = new Array();
         var chartpress = new Array();
@@ -304,29 +307,35 @@ border: 1px solid white;
         var charttime = new Array();
         
         
-        var canvas = document.getElementById('myChart');
+        var Tcanvas = document.getElementById('TChart');
+        var Pcanvas = document.getElementById('PChart');
+        var Hcanvas = document.getElementById('HChart');
+        var Rcanvas = document.getElementById('RChart');
         
-        if (!canvas) {
-            //alert('Error: Cannot find the canvas element!');
+        if (!Tcanvas) {
+            //alert('Error: Cannot find the Tcanvas element!');
             var tmchart = document.getElementById('chart');
             if (tmchart) {
-                var canv = document.createElement('canvas');
-                canv.id = 'myChart';
+                var canv = document.createElement('Tcanvas');
+                canv.id = 'TChart';
                 
                 document.getElementById('chart').appendChild(canv);  
             }
             //loadpage();
             setTimeout('loadpage()',10);
         } else {
-            if (!canvas.getContext) {
+            if (!Tcanvas.getContext) {
                 //alert('Error: Canvas context does not exist!');
             } else {
                 
                 
-                //Get the context of the canvas element we want to select
-                var ctx = canvas.getContext("2d");
+                //Get the context of the Tcanvas element we want to select
+                var ctxT = Tcanvas.getContext("2d");
+                var ctxP = Pcanvas.getContext("2d");
+                var ctxH = Hcanvas.getContext("2d");
+                var ctxR = Rcanvas.getContext("2d");
                 
-                chartdata = {
+                chartdatat = {
                     labels : ["0"],
                     datasets : [
                     {
@@ -339,8 +348,50 @@ border: 1px solid white;
                     ]
                 }
                 
-                charttime = chartdata.labels;
-                charttemp = chartdata.datasets[0].data;
+                chartdatap = {
+                    labels : ["0"],
+                    datasets : [
+                    {
+                        fillColor : "rgba(151,187,205,0.5)",
+                        strokeColor : "rgba(151,187,205,1)",
+                        pointColor : "rgba(151,187,205,1)",
+                        pointStrokeColor : "#fff",
+                        data : [0]
+                    }
+                    ]
+                }
+                
+                chartdatah = {
+                    labels : ["0"],
+                    datasets : [
+                    {
+                        fillColor : "rgba(151,187,205,0.5)",
+                        strokeColor : "rgba(151,187,205,1)",
+                        pointColor : "rgba(151,187,205,1)",
+                        pointStrokeColor : "#fff",
+                        data : [0]
+                    }
+                    ]
+                }
+                
+                chartdatar = {
+                    labels : ["0"],
+                    datasets : [
+                    {
+                        fillColor : "rgba(151,187,205,0.5)",
+                        strokeColor : "rgba(151,187,205,1)",
+                        pointColor : "rgba(151,187,205,1)",
+                        pointStrokeColor : "#fff",
+                        data : [0]
+                    }
+                    ]
+                }
+                
+                charttime = chartdatat.labels;
+                charttemp = chartdatat.datasets[0].data;
+                chartpress = chartdatap.datasets[0].data;
+                charthidro = chartdatah.datasets[0].data;
+                chartrain = chartdatar.datasets[0].data;
             }
         }
         
@@ -435,16 +486,22 @@ border: 1px solid white;
                     cell4.innerHTML = myObject[i][7];
                     cell5.innerHTML = myObject[i][9];
                     
-                    if (canvas) {
-                        if (canvas.getContext) {
+                    if (Tcanvas) {
+                        if (Tcanvas.getContext) {
                             if (chartdifference < 0){
                                 charttime[ic] = myObject[i][0] + " " + myObject[i][1];
                                 charttemp[ic] = myObject[i][3];
+                                chartpress[ic] = myObject[i][5];
+                                charthidro[ic] = myObject[i][7];
+                                chartrain[ic] = myObject[i][9];
                                 ic++;
                             }
                             if ((chartdifference > 0) && (i > chartdifference)){
                                 charttime[ic] = myObject[i][0] + " " + myObject[i][1];
                                 charttemp[ic] = myObject[i][3];
+                                chartpress[ic] = myObject[i][5];
+                                charthidro[ic] = myObject[i][7];
+                                chartrain[ic] = myObject[i][9];
                                 ic++;
                             }
                         }
@@ -512,16 +569,28 @@ border: 1px solid white;
             };
             
             
-            //add chart in canvas
-            if (canvas) {
+            //add chart in Tcanvas
+            if (Tcanvas) {
                 
-                if (canvas.getContext) {
+                if (Tcanvas.getContext) {
                     
-                    chartdata.labels = charttime;
-                    chartdata.datasets[0].data = charttemp;
-                    ctx.canvas.width  = window.innerWidth-20;
+                    chartdatat.labels = charttime;
+                    chartdatat.datasets[0].data = charttemp;
+                    chartdatap.labels = charttime;
+                    chartdatap.datasets[0].data = chartpress;
+                    chartdatah.labels = charttime;
+                    chartdatah.datasets[0].data = charthidro;
+                    chartdatar.labels = charttime;
+                    chartdatar.datasets[0].data = chartrain;
+                    ctxT.canvas.width  = window.innerWidth-20;
+                    ctxP.canvas.width  = window.innerWidth-20;
+                    ctxH.canvas.width  = window.innerWidth-20;
+                    ctxR.canvas.width  = window.innerWidth-20;
                     
-                    var myNewChart = new Chart(ctx).Line(chartdata,  chartoptions);
+                    var myNewChart = new Chart(ctxT).Line(chartdatat,  chartoptions);
+                    var myNewChart = new Chart(ctxP).Line(chartdatap,  chartoptions);
+                    var myNewChart = new Chart(ctxH).Line(chartdatah,  chartoptions);
+                    var myNewChart = new Chart(ctxR).Line(chartdatar,  chartoptions);
                 }
             }
             
@@ -542,7 +611,10 @@ border: 1px solid white;
       </div>
 </div>
 <div id="chart">
-<canvas id="myChart" width="800" height="400"></canvas>
+<canvas id="TChart" width="800" height="400"></canvas>
+<canvas id="PChart" width="800" height="400"></canvas>
+<canvas id="HChart" width="800" height="400"></canvas>
+<canvas id="RChart" width="800" height="400"></canvas>
 </div>
       <div id="old">
 	<table id="oldTable" width="320" border="1"/>
