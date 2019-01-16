@@ -133,7 +133,7 @@ void loop() {
             String tval = String(temperature, DEC);
             String hval = String(humidity, DEC);
             String rval = String(tmprain, DEC);
-            client.println("GET /write-values.php?temperature=" + tval + "&pressure=" + pval + "&humidity=" + hval + "&rain=" + rval + " HTTP/1.1");
+            client.println("GET /meteo/write-values.php?temperature=" + tval + "&pressure=" + pval + "&humidity=" + hval + "&rain=" + rval + " HTTP/1.1");
             client.println("Host: " + String(host));
             client.println("Connection: keep-open");
             client.println();
