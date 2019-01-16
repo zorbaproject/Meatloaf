@@ -13,7 +13,7 @@ IPAddress server(192,168,0,103);  // numeric IP
 
 const char* host = "192.168.0.103";
 
-unsigned long towait = 1000UL*60*5;
+unsigned long towait = (1000UL*60*5) - 500UL;
 unsigned long iter = towait - 1000UL*10;
 
 const float drop = 2.5;
@@ -82,7 +82,7 @@ void loop() {
         itert = 0;
     }
     
-    if (iter > towait) {
+    if (iter >= towait) {
         /*Serial.println(iter);
          *        Serial.println(towait);*/
         float pressure = bmp.readPressure()/100;
