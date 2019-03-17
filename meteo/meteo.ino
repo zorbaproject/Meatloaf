@@ -16,9 +16,10 @@ const char* host = "192.168.0.103";
 unsigned long towait = (1000UL*60*5);
 unsigned long iter = towait - 1000UL*10;
 
-const float drop = 2.5;
+const float drop = (1.8/(11*5))*10; // (9ml/5click)/(area in cm2)=cm of rain Note: 1ml = 1cm3
 
 bool debug = false;
+bool firstrun = true;
 
 float rain = 0.0;
 float rainV[60];
@@ -44,30 +45,45 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
 
 uint32_t delayMS;
 
+void(* resetFunc) (void) = 0;
+
 void setup() {
     // Open serial communications and wait for port to open:
     Serial.begin(9600);
+    if (debug) Serial.println("Looking for network...");
     // start the Ethernet connection:
     if (Ethernet.begin(mac) == 0) {
         Ethernet.begin(mac, ip);
     }
+    if (!Ethernet.localIP() || Ethernet.localIP() == "") {
+        Serial.println("Could not connect to network, resetting.");
+        delay(2000);
+        resetFunc();
+    }
+    Serial.print("Connected to network. IP: ");
+    Serial.println(Ethernet.localIP());
     // give the Ethernet shield a second to initialize:
     delay(1000);
+    
     if (!bmp.begin()) {
-        Serial.println("Could not find a valid BMP085 sensor, check wiring!");
-        while (1) {}
+        Serial.println("Could not find a valid BMP085 sensor, rebooting in 2 seconds.");
+        delay(2000);
+        //resetFunc();
     }
+    if (debug) Serial.println("BMP085 found");
     pinMode(RAINPIN, INPUT);
     for (int i = 0; i < 60; i++) rainV[i] = 0.0;
+    if (debug) Serial.println("Rain array initialized");
     sensor_t sensor;
     dht.temperature().getSensor(&sensor);
     dht.humidity().getSensor(&sensor);
+    if (debug) Serial.println("DHT sensor ready");
     delayMS = sensor.min_delay / 1000;
     delay(delayMS);
+    if (debug) Serial.println("Setup finished");
 }
 
 void loop() {
-    
     if ((millis() % 100) == 0) {
         itert = itert + 100;
         if (digitalRead(RAINPIN) == HIGH) {
@@ -83,10 +99,13 @@ void loop() {
         itert = 0;
     }
     
-    if ((millis() % towait) == 0) {
+    if ((millis() % towait) == 0 || firstrun == true) {
         /*Serial.println(iter);
          *        Serial.println(towait);*/
-        float pressure = bmp.readPressure()/100;
+        if (debug) Serial.println("Reading sensors");
+        firstrun = false;
+        float pressure = 0.0;
+        pressure = bmp.readPressure()/100;
         if (debug) {
             Serial.print("Pressure = ");
             Serial.print(pressure);
@@ -124,11 +143,10 @@ void loop() {
         }
         
         if (!client.connected()) {
-            //Serial.println();
-            //Serial.println("disconnecting.");
             client.stop();
         }
         // Make a HTTP request:
+        if (debug) Serial.println("Connecting to server");
         if (client.connect(server, 80)) {
             String pval = String(pressure, DEC);
             String tval = String(temperature, DEC);
@@ -138,10 +156,23 @@ void loop() {
             client.println("Host: " + String(host));
             client.println("Connection: keep-open");
             client.println();
-            //Serial.println("connected");
+            if (debug) {
+                Serial.print("GET /meteo/write-values.php?temperature=");
+                Serial.print(tval);
+                Serial.print("&pressure=");
+                Serial.print(pval);
+                Serial.print("&humidity=");
+                Serial.print(hval);
+                Serial.print("&rain=");
+                Serial.print(rval);
+                Serial.println(" HTTP/1.1");
+            }
+            if (debug) Serial.println("Data sent to server");
         } else {
-            Serial.println("connection failed");
+            Serial.println("Connection failed");
             client.stop();
+            delay(1000);
+            resetFunc();
         }
         
         //iter = 0;
