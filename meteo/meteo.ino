@@ -13,7 +13,7 @@ IPAddress server(192,168,0,103);  // numeric IP
 
 const char* host = "192.168.0.103";
 
-unsigned long towait = (1000UL*60*5);
+unsigned long towait = (1000UL*60*10);
 unsigned long iter = towait - 1000UL*10;
 
 const float drop = (1.8/(11*5))*10; // (9ml/5click)/(area in cm2)=cm of rain Note: 1ml = 1cm3
@@ -66,14 +66,12 @@ void setup() {
     delay(1000);
     
     if (!bmp.begin()) {
-        Serial.println("Could not find a valid BMP085 sensor, rebooting in 2 seconds.");
+        Serial.println("Could not find a valid BMP085 sensor");
         delay(2000);
-        //resetFunc();
     }
     if (debug) Serial.println("BMP085 found");
     pinMode(RAINPIN, INPUT);
     for (int i = 0; i < 60; i++) rainV[i] = 0.0;
-    if (debug) Serial.println("Rain array initialized");
     sensor_t sensor;
     dht.temperature().getSensor(&sensor);
     dht.humidity().getSensor(&sensor);
@@ -100,8 +98,6 @@ void loop() {
     }
     
     if ((millis() % towait) == 0 || firstrun == true) {
-        /*Serial.println(iter);
-         *        Serial.println(towait);*/
         if (debug) Serial.println("Reading sensors");
         firstrun = false;
         float pressure = 0.0;
