@@ -5,6 +5,8 @@
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <DHT_U.h>
+#include <OneWire.h> 
+#include <DallasTemperature.h>
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 
@@ -40,6 +42,11 @@ Adafruit_BMP085 bmp;
 #define DHTTYPE           DHT22     // DHT 22 (AM2302)
 
 #define RAINPIN           8         //Pin connected to the rain gauge
+
+#define ONE_WIRE_BUS 4              //Pin connected to the DS81B20
+
+OneWire oneWire(ONE_WIRE_BUS); 
+DallasTemperature sensors(&oneWire);
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
 
@@ -78,6 +85,7 @@ void setup() {
     if (debug) Serial.println("DHT sensor ready");
     delayMS = sensor.min_delay / 1000;
     delay(delayMS);
+    sensors.begin(); 
     if (debug) Serial.println("Setup finished");
 }
 
@@ -119,6 +127,8 @@ void loop() {
                 Serial.println(" °C");
             }
         }
+        sensors.requestTemperatures();
+        temperature = sensors.getTempCByIndex(0);
         
         float humidity = 0.0;
         dht.humidity().getEvent(&event);
