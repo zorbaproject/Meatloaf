@@ -44,7 +44,7 @@ Adafruit_BMP085 bmp;
 
 #define RAINPIN           8         //Pin connected to the rain gauge
 
-#define ONE_WIRE_BUS 4              //Pin connected to the DS81B20
+#define ONE_WIRE_BUS 7              //Pin connected to the DS81B20
 
 OneWire oneWire(ONE_WIRE_BUS); 
 DallasTemperature sensors(&oneWire);
