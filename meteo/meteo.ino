@@ -91,14 +91,14 @@ void setup() {
 }
 
 void loop() {
-    if ((millis() % 100) == 0) {
-        itert = itert + 100;
+    if ((millis() % 10) == 0) {
+        itert = itert + 10;
         if (digitalRead(RAINPIN) == HIGH) {
           rain = rain + drop;
         }
     }
-    if (itert >= (1000UL*60) && itert % (1000UL*60) == 0) {
-        int i = (itert / (1000UL*60))-1;
+    if (itert % (1000UL*60) == 0) {
+        int i = itert % (1000UL*60); //(itert / (1000UL*60))-1;
         rainV[i] = rain;
         rain = 0;
     }
