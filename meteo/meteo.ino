@@ -15,7 +15,8 @@ IPAddress server(192,168,0,103);  // numeric IP
 const char* host = "192.168.0.103";
 
 unsigned long towait = (1000UL*60*10);
-//unsigned long iter = towait - 1000UL*10;
+int lastdrop = 1000;
+int lastarray = 1000;
 
 const float drop = (1.8/(11*5))*10; // (9ml/5click)/(area in cm2)=cm of rain Note: 1ml = 1cm3
 
@@ -26,7 +27,7 @@ bool firstrun = true;
 
 float rain = 0.0;
 float rainV[60];
-unsigned long itert = 0;
+//unsigned long itert = 0;
 
 IPAddress ip(192, 168, 0, 177);
 
@@ -91,19 +92,28 @@ void setup() {
 }
 
 void loop() {
+
     if ((millis() % 10) == 0) {
-        itert = itert + 10;
+        //itert = itert + 10;
+        lastdrop = lastdrop + 10;
+        if (lastdrop > 20000) lastdrop = 1100;
+        lastarray = lastarray + 10;
+        if (lastarray > 20000) lastarray = 1100;
+    }
+    
+    if ((millis() % 10) == 0 && lastdrop > 1000) {
         if (digitalRead(RAINPIN) == HIGH) {
           rain = rain + drop;
+          lastdrop = 0;
         }
     }
-    if (itert % (1000UL*60) == 0) {
-        int i = itert % (1000UL*60); //(itert / (1000UL*60))-1;
+    
+    if (millis() % (1000UL*60) == 0 && lastarray > 1000) {
+        int i = (millis() / (1000UL*60))-1;
+        i = i % 60; //ogni ora si ricomincia
         rainV[i] = rain;
-        rain = 0;
-    }
-    if (itert > 1000UL*60*60) {
-        itert = 0;
+        rain = 0.0;
+        lastarray = 0;
     }
     
     if ((millis() % towait) == 0 || firstrun == true) {
@@ -135,7 +145,7 @@ void loop() {
         if (debug) {
             Serial.println(humidity);
         }
-        
+
         float tmprain = 0.0;
         for (int i =0 ; i < 60; i++) tmprain = tmprain + rainV[i];
         if (debug) {
@@ -153,7 +163,7 @@ void loop() {
             String tval = String(temperature, DEC);
             String hval = String(humidity, DEC);
             String rval = String(tmprain, DEC);
-            String frval = String("");
+            String frval = String("&firstrun=0");
             if (firstrun) frval = String("&firstrun=1");
             client.println("GET /meteo/write-values.php?temperature=" + tval + "&pressure=" + pval + "&humidity=" + hval + "&rain=" + rval + frval + " HTTP/1.1");
             client.println("Host: " + String(host));
