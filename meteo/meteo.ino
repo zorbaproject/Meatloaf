@@ -167,9 +167,11 @@ void loop() {
             if (firstrun) frval = String("&firstrun=1");
             client.println("GET /meteo/write-values.php?temperature=" + tval + "&pressure=" + pval + "&humidity=" + hval + "&rain=" + rval + frval + " HTTP/1.1");
             client.println("Host: " + String(host));
-            client.println("Connection: keep-open");
+            //client.println("Connection: keep-open");
+            client.println("Connection: close");
             client.println();
             if (debug) Serial.println("Data sent");
+            client.stop();
         } else {
             Serial.println("Connection failed");
             client.stop();
