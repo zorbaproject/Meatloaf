@@ -4,7 +4,7 @@ $temperature = $_GET['temperature'];
 $humidity = $_GET['humidity'];
 $pressure = $_GET['pressure'];
 $rain = $_GET['rain'];
-$txt = date("Y-m-d H:i:s")." TEMPERATURE: ".$temperature." PRESSURE: ".$pressure." HUMIDITY: ".$humidity." RAIN: ".$rain;
+$txt = date("Y-m-d H:i:s").",".$temperature.",".$pressure.",".$humidity.",".$rain;
 $myfile = file_put_contents('logs.txt', $txt.PHP_EOL , FILE_APPEND | LOCK_EX);  
 ?>
 

@@ -424,15 +424,28 @@ border: 1px solid white;
                 var tot = 0;
                 var myObject = jsontext.split("\n");
                 while (myObject[tot]!=undefined && myObject[tot]!="") {
-                    myObject[tot] = myObject[tot].split(" ");
+                    myObject[tot] = myObject[tot].split(",");
                     tot++;
                 }
                 
+                var COLdataora = 0;
+                var COLtemp = 1;
+                var COLpress = 2;
+                var COLumid = 3;
+                var COLpioggia = 4;
                 
-                var lastphrase = "L'ultimo dato rilevato &egrave; temperatura "+myObject[tot-1][3].substring(0,myObject[tot-1][3].indexOf('.')+3)+"&deg;C, pressione "+myObject[tot-1][5].substring(0,myObject[tot-1][5].indexOf('.')+3)+"hPa, umidit&agrave; "+myObject[tot-1][7].substring(0,myObject[tot-1][7].indexOf('.')+3)+"%, pioggia "+myObject[tot-1][9].substring(0,myObject[tot-1][9].indexOf('.')+3)+"mm/h, e risale alle ore ";
-                lastphrase += myObject[tot-1][1];
+                var lastphrase = "";
+                var ltemp = myObject[tot-1][COLtemp];
+                var lpress = myObject[tot-1][COLpress];
+                var lumid = myObject[tot-1][COLumid];
+                var lpioggia = myObject[tot-1][COLpioggia];
+                var lastphrase = "L'ultimo dato rilevato &egrave; temperatura "+ltemp.substring(0,ltemp.indexOf('.')+3)
+                lastphrase += "&deg;C, pressione "+ lpress.substring(0,lpress.indexOf('.')+3)
+                lastphrase += "hPa, umidit&agrave; "+lumid.substring(0,lumid.indexOf('.')+3)
+                lastphrase += "%, pioggia "+lpioggia.substring(0,lpioggia.indexOf('.')+3)+"mm/h, e risale alle ore ";
+                lastphrase += myObject[tot-1][COLdataora].split(" ")[1];
                 lastphrase += " del giorno ";
-                lastphrase += myObject[tot-1][0];
+                lastphrase += myObject[tot-1][COLdataora].split(" ")[0];
                 lastphrase += ".<br><br>";
                 var lastobject = document.getElementById('last');
                 lastobject.innerHTML = lastphrase;
@@ -480,28 +493,28 @@ border: 1px solid white;
                     var cell5 = row.insertCell(4);
                     
                     // Add some text to the new cells:
-                    cell1.innerHTML = myObject[i][0] + " " + myObject[i][1];
-                    cell2.innerHTML = myObject[i][3];
-                    cell3.innerHTML = myObject[i][5];
-                    cell4.innerHTML = myObject[i][7];
-                    cell5.innerHTML = myObject[i][9];
+                    cell1.innerHTML = myObject[i][COLdataora];
+                    cell2.innerHTML = myObject[i][COLtemp];
+                    cell3.innerHTML = myObject[i][COLpress];
+                    cell4.innerHTML = myObject[i][COLumid];
+                    cell5.innerHTML = myObject[i][COLpioggia];
                     
                     if (Tcanvas) {
                         if (Tcanvas.getContext) {
                             if (chartdifference < 0){
-                                charttime[ic] = myObject[i][0] + " " + myObject[i][1];
-                                charttemp[ic] = myObject[i][3];
-                                chartpress[ic] = myObject[i][5];
-                                charthidro[ic] = myObject[i][7];
-                                chartrain[ic] = myObject[i][9];
+                                charttime[ic] = myObject[i][COLdataora];
+                                charttemp[ic] = myObject[i][COLtemp];
+                                chartpress[ic] = myObject[i][COLpress];
+                                charthidro[ic] = myObject[i][COLumid];
+                                chartrain[ic] = myObject[i][COLpioggia];
                                 ic++;
                             }
                             if ((chartdifference > 0) && (i > chartdifference)){
-                                charttime[ic] = myObject[i][0] + " " + myObject[i][1];
-                                charttemp[ic] = myObject[i][3];
-                                chartpress[ic] = myObject[i][5];
-                                charthidro[ic] = myObject[i][7];
-                                chartrain[ic] = myObject[i][9];
+                                charttime[ic] = myObject[i][COLdataora];
+                                charttemp[ic] = myObject[i][COLtemp];
+                                chartpress[ic] = myObject[i][COLpress];
+                                charthidro[ic] = myObject[i][COLumid];
+                                chartrain[ic] = myObject[i][COLpioggia];
                                 ic++;
                             }
                         }
