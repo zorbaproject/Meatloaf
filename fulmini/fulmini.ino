@@ -20,7 +20,7 @@ const int posOff = 90;
 
 const unsigned long waitfor = 1*1000UL*60; //minutes
 
-const float soglia = 100.0;  //range: 10-500
+const float soglia = 20; //100.0;  //range: 10-500
 
 unsigned long lastOff = 0;
 
@@ -48,7 +48,7 @@ int maximum;
 int minimum;
 bool toSend;
 
-const char signMessage[] PROGMEM = {"HTTP/1.1 200 OK\nContent-Type: text/html\nConnection: close\nRefresh: 5\n\n<!DOCTYPE HTML>\n<html>\n"};
+const char httpheader[] PROGMEM = {"HTTP/1.1 200 OK\nContent-Type: text/html\nConnection: close\nRefresh: 5\n\n<!DOCTYPE HTML>\n<html>\n"};
 
 
 void setup() {
@@ -83,7 +83,7 @@ void loop() {
   //Serial.println(reading);
   if ((!toSend)&&(count!=0)&&((reading>storage[count-1]+soglia)||(reading<storage[count-1]-soglia))){
       toSend=true;
-      Serial.println(reading);
+      //Serial.println(reading);
   }
 
   count=count+1;
@@ -92,7 +92,9 @@ void loop() {
     count=0;
     batchEnded = millis();
     if ((millis()-lastOff)>10000) myservo.write(posOff);
+    //myservo.write(posOff);
     //Serial.println("Off");
+    Serial.println(reading);
     lastOff = millis();
     batchStarted = millis();
     toSend=false;
@@ -120,6 +122,7 @@ void weblisten() {
         //Serial.write(c);
         if (c == '\n' && currentLineIsBlank) {
           //Serial.println((millis()-lastOff));
+          client.println(httpheader);
           if (((millis()-lastOff) > waitfor)) {
             client.println("Power On");
           } else {
