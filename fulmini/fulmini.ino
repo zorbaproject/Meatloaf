@@ -2,7 +2,13 @@
 #include <Servo.h>
 #include <SPI.h>
 #include <Ethernet.h>
+#include <avr/pgmspace.h>
 
+byte mac[] = {
+  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+};
+IPAddress ip(192, 168, 1, 117);
+EthernetServer server(80);
 
 Servo myservo;  
 
@@ -12,41 +18,92 @@ const int antenna = A4;
 const int posOn = 180;
 const int posOff = 90;
 
-const int waitfor = 10*60*10; //minutes
+const unsigned long waitfor = 1*1000UL*60; //minutes
 
-float soglia = 700.0;
+const float soglia = 100.0;  //range: 10-500
 
-int lastOff = 0;
+unsigned long lastOff = 0;
 
 
-byte mac[] = {
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-};
-IPAddress ip(192, 168, 1, 117);
-EthernetServer server(80);
+
+// Thanks to https://github.com/klauscam/Arduino-Lightning-Detector/blob/master/sketch/LightningDetector/LightningDetector.ino
+#define FASTADC 1
+
+// defines for setting and clearing register bits
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+#endif
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+
+int data = 512;
+int storage[512];
+
+long batchStarted;
+long batchEnded;
+int reading;
+int count;
+int maximum;
+int minimum;
+bool toSend;
+
+const char signMessage[] PROGMEM = {"HTTP/1.1 200 OK\nContent-Type: text/html\nConnection: close\nRefresh: 5\n\n<!DOCTYPE HTML>\n<html>\n"};
+
 
 void setup() {
+  #if FASTADC
+  // set prescale to 16
+  sbi(ADCSRA,ADPS2) ;
+  cbi(ADCSRA,ADPS1) ;
+  cbi(ADCSRA,ADPS0) ;
+  #endif
   myservo.attach(servoPin);  
   pinMode(antenna, INPUT);
   myservo.write(posOn);
   Serial.begin(9600);
   Ethernet.begin(mac, ip);
   server.begin();
-  Serial.print("server is at ");
-  Serial.println(Ethernet.localIP());
+  //Serial.print("server is at ");
+  //Serial.println(Ethernet.localIP());
+
+  batchStarted=0;
+  batchEnded=0;
+  reading=0;
+  count=0;
+  maximum=0;
+  minimum=1023;
+  toSend=false;
+  //Serial.println(waitfor);
 }
 
 void loop() {
   float reading = analogRead(antenna);
-  Serial.println(reading);
-  if (reading > soglia && lastOff > 10) {
-    myservo.write(posOff);
-    lastOff = 0;
-  } else if (lastOff > waitfor) {
-    myservo.write(posOn);
+  storage[count]=reading;
+  //Serial.println(reading);
+  if ((!toSend)&&(count!=0)&&((reading>storage[count-1]+soglia)||(reading<storage[count-1]-soglia))){
+      toSend=true;
+      Serial.println(reading);
   }
-  delay(100); 
-  lastOff = lastOff +1;
+
+  count=count+1;
+  if ((count == 512) && (toSend))
+  {
+    count=0;
+    batchEnded = millis();
+    if ((millis()-lastOff)>10000) myservo.write(posOff);
+    //Serial.println("Off");
+    lastOff = millis();
+    batchStarted = millis();
+    toSend=false;
+  }
+  else if (count==512 && (millis()-lastOff)>waitfor){
+    count=0;
+    batchEnded = millis();
+    myservo.write(posOn);
+    batchStarted = millis();
+  
+  }
   weblisten();
 }
 
@@ -54,31 +111,23 @@ void loop() {
 void weblisten() {
   EthernetClient client = server.available();
   if (client) {
-    Serial.println("new client");
+    //Serial.println("new client");
     // an http request ends with a blank line
     boolean currentLineIsBlank = true;
     while (client.connected()) {
       if (client.available()) {
         char c = client.read();
-        Serial.write(c);
+        //Serial.write(c);
         if (c == '\n' && currentLineIsBlank) {
-          client.println("HTTP/1.1 200 OK");
-          client.println("Content-Type: text/html");
-          client.println("Connection: close"); 
-          client.println("Refresh: 5"); 
-          client.println();
-          client.println("<!DOCTYPE HTML>");
-          client.println("<html>");
-          if (lastOff > waitfor) {
-            client.print("Power On");
+          //Serial.println((millis()-lastOff));
+          if (((millis()-lastOff) > waitfor)) {
+            client.println("Power On");
           } else {
-            client.print("Power Off");
+            client.println("Power Off");
           }
-          client.println("<br />");
           client.print("Last Off: ");
-          client.print(lastOff/10);  //seconds
-          client.println("<br />");
-          client.println("</html>");
+          client.println((millis()-lastOff)/1000);  //seconds
+          //client.println("</html>");
           break;
         }
         if (c == '\n') {
@@ -91,7 +140,7 @@ void weblisten() {
     // give the web browser time to receive the data
     delay(1);
     client.stop();
-    Serial.println("client disconnected");
+    //Serial.println("client disconnected");
   }
 }
 
