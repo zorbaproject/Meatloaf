@@ -21,11 +21,11 @@ const int servoPin = 9;
 const int antenna = A4;
 
 const int posOn = 180;
-const int posOff = 90;
+const int posOff = 0;
 
 const unsigned long waitfor = 1*1000UL*60; //minutes
 
-const float soglia = 20; //100.0;  //range: 10-500
+const float soglia = 50; //100.0;  //range: 10-500
 
 unsigned long lastOff = 0;
 
