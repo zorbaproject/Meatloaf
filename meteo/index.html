@@ -477,7 +477,8 @@ border: 1px solid white;
                 hcell5.setAttribute("style", "background-color:green;color: white;");
                 
                 var maxitemschart = 36;                                    
-                var chartdifference = tot - maxitemschart;
+                var chartinterval = 3;
+                var chartdifference = tot - maxitemschart*chartinterval;
                 var ic = 0;
                 
                 for (var i = 0; i < tot; i++) {
@@ -501,7 +502,7 @@ border: 1px solid white;
                     
                     if (Tcanvas) {
                         if (Tcanvas.getContext) {
-                            if (chartdifference < 0){
+                            if ((chartdifference < 0) && (i%chartinterval==0)){
                                 charttime[ic] = myObject[i][COLdataora];
                                 charttemp[ic] = myObject[i][COLtemp];
                                 chartpress[ic] = myObject[i][COLpress];
@@ -509,7 +510,7 @@ border: 1px solid white;
                                 chartrain[ic] = myObject[i][COLpioggia];
                                 ic++;
                             }
-                            if ((chartdifference > 0) && (i > chartdifference)){
+                            if ((chartdifference > 0) && (i > chartdifference) && ((i-chartdifference)%chartinterval==0)){
                                 charttime[ic] = myObject[i][COLdataora];
                                 charttemp[ic] = myObject[i][COLtemp];
                                 chartpress[ic] = myObject[i][COLpress];
