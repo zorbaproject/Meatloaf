@@ -34,6 +34,7 @@
 const int chipSelect = 4;
 
 bool datalog = false;
+bool menu1 = false;
 
 int lcd_key     = 0;
 int adc_key_in  = 0;
@@ -52,7 +53,16 @@ DallasTemperature sensors(&oneWire);
 
 unsigned long logcount = 0;
 float voltage,ecValue,temperature = 25;
+const float defaultTemp = 19.0;
+
+int ecOldLen = 10;
+float* ecOld;
+int cycleiter = 0;
+
 DFRobot_EC ec;
+
+#define KVALUEADDR 0x0A
+
 
 void setup()
 {
@@ -68,23 +78,38 @@ void setup()
     lcd.setCursor(12,0);
     lcd.print("noSD");
     Serial.println("Card not found");
+    delay(2000);
   }
+  resizeEcOld();
 }
 
 void loop()
 {
     static unsigned long timepoint = millis();
-    if(millis()-timepoint>1000U)  //time interval: 1s
+    if (menu1) {
+      menu();
+    } else if (millis()-timepoint>1000U)  //time interval: 1s
     {
       timepoint = millis();
-      voltage = analogRead(EC_PIN)/1024.0*5000*1000;   // read the voltage
+      voltage = analogRead(EC_PIN)/1024.0*5000;   // read the voltage
       temperature = readTemperature();          // read your temperature sensor to execute temperature compensation
+      if (temperature == -127) {
+        temperature = defaultTemp;
+      }
       ecValue =  ec.readEC(voltage,temperature);  // convert voltage to EC with temperature compensation
-      /*Serial.print("temperature:");
-      Serial.print(temperature,1);
-      Serial.print("^C  EC [K=1]:");
-      Serial.print(ecValue,2);
-      Serial.println("uS/cm");*/
+      ecValue = ecValue*1000; //looking for microsiemens
+
+      //get a mean value
+      for (int i = 0; i < ecOldLen; i++) {
+        if (i==cycleiter || ecOld[i]<10) ecOld[i] = ecValue;
+      }
+      cycleiter++;
+      if (cycleiter>=ecOldLen) cycleiter = 0;
+      float ecT = 0;
+      for (int i = 0; i < ecOldLen; i++) {
+        ecT = ecT + ecOld[i];
+      }
+      ecT = ecT/ecOldLen;
       lcd.setCursor(0,0);
       lcd.print("T = ");
       lcd.setCursor(4,0);
@@ -94,28 +119,32 @@ void loop()
       lcd.setCursor(0,1);
       lcd.print("EC = ");
       lcd.setCursor(5,1);
-      lcd.print(ecValue,0);
+      lcd.print(ecT,0);
+      //lcd.print(ecValue,0);
       lcd.setCursor(10,1);
       lcd.print("uS/cm");
       if (datalog) {
         File dataFile = SD.open("datalog.txt", FILE_WRITE);
         if (dataFile) {
           String tval = String(temperature, DEC);
-          String cval = String(ecValue, DEC);
+          String cval = String(ecT, DEC);
           dataFile.println(String(logcount)+String(",")+tval+String(",")+cval);
           dataFile.close();
-          lcd.setCursor(13,0);
-          lcd.print("LOG");
+          lcd.setCursor(12,0);
+          lcd.print(" LOG");
         } else {
           lcd.setCursor(0,0);
-          lcd.print("error opening datalog.txt");
+          lcd.print("Error on SD      ");
         }
         logcount++;
+      } else {
+        lcd.setCursor(11,0);
+        lcd.print("noLOG");
       }
       lcd_key = read_LCD_buttons();  // read the buttons
-      if (lcd_key==btnSELECT) datalog=true;
+      if (lcd_key==btnSELECT) menu1=true;
     }
-    ec.calibration(voltage,temperature);          // calibration process by Serail CMD
+    //ec.calibration(voltage,temperature);          // calibration process by Serail CMD
 }
 
 float readTemperature()
@@ -152,3 +181,111 @@ int read_LCD_buttons()
 
  return btnNONE;  // when all others fail, return this...
 }
+
+void menu()
+{
+  lcd.setCursor(0,0);
+  lcd.print("Su e giu, select");
+  lcd.setCursor(0,1);
+  lcd.print("                    ");
+  int pos = 0;
+  int maxoptions = 5;
+  delay(1000);
+  while (menu1) {
+    lcd_key = read_LCD_buttons();  // read the buttons
+    if (lcd_key==btnUP) pos+=1;
+    if (lcd_key==btnDOWN) pos-=1;
+    if (abs(pos)%maxoptions == 0) {
+      lcd.setCursor(0,1);
+      lcd.print("Scrivi su SD      ");
+      if (lcd_key==btnSELECT) {
+        if (datalog) {
+          datalog=false;
+        } else if (!datalog) {
+          datalog=true;
+        }
+      }
+      if (datalog) {
+        lcd.setCursor(14,1);
+        lcd.print("*");
+      } else {
+        lcd.setCursor(13,1);
+        lcd.print("  ");
+      }
+    }
+    if (abs(pos)%maxoptions == 1) {
+      lcd.setCursor(0,1);
+      lcd.print("Media su       s");
+      if (lcd_key==btnLEFT) {
+        ecOldLen--;
+        if (ecOldLen <1) ecOldLen = 1;
+        resizeEcOld();
+      }
+      if (lcd_key==btnRIGHT) {
+        ecOldLen++;
+        if (ecOldLen >30) ecOldLen = 30;
+        resizeEcOld();
+      }
+      lcd.setCursor(13,1);
+      if (ecOldLen<10) lcd.setCursor(14,1);
+      lcd.print(ecOldLen);
+    }
+    if (abs(pos)%maxoptions == 2) {
+      lcd.setCursor(0,1);
+      lcd.print("Calibrazione      ");
+      if (lcd_key==btnSELECT) calibrate();
+    }
+    if (abs(pos)%maxoptions == 3) {
+      lcd.setCursor(0,1);
+      lcd.print("Reset memoria      ");
+      if (lcd_key==btnSELECT) resetMemory();
+    }
+    if (abs(pos)%maxoptions == 4) {
+      lcd.setCursor(0,1);
+      lcd.print("Esci               ");
+      if (lcd_key==btnSELECT) menu1=false;
+    }
+    delay(200);
+  }
+}
+
+void resizeEcOld() 
+{
+  if (ecOld != 0) {
+    delete [] ecOld;
+  }
+  ecOld = new float [ecOldLen];
+  for (int i = 0; i < ecOldLen; i++) {
+    ecOld[i] = 0.0;
+  }
+}
+
+void resetMemory() {
+  /*for(byte i = 0;i< 8; i   ){
+    EEPROM.write(KVALUEADDR i, 0xFF);
+  }*/
+}
+
+void calibrate() {
+  bool active = true;
+  while (active) {
+    static unsigned long timepoint = millis();
+    if(millis()-timepoint>1000U)  //time interval: 1s
+    {
+      timepoint = millis();
+      voltage = analogRead(EC_PIN)/1024.0*5000;  // read the voltage
+      temperature = readTemperature();          // read your temperature sensor to execute temperature compensation
+      if (temperature == -127) {
+        temperature = defaultTemp;
+      }
+      ecValue =  ec.readEC(voltage,temperature);  // convert voltage to EC with temperature compensation
+      Serial.print("temperature:");
+      Serial.print(temperature,1);
+      Serial.print("^C  EC:");
+      Serial.print(ecValue,2);
+      Serial.println("ms/cm");
+    }
+    ec.calibration(voltage,temperature);  // calibration process by Serail CMD
+  }
+}
+
