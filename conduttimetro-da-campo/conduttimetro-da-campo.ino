@@ -19,7 +19,7 @@
  ** MOSI - pin 11
  ** MISO - pin 12
  ** CLK - pin 13
- ** CS - pin 4
+ ** CS - pin 10
  *  
  *  
  * Requirements:
