@@ -4,20 +4,23 @@ Questo è un conduttimetro da campo per l'analisi di acque superficiali e ipogee
 ## Hardware
 Questo è l'attuale prototipo:
 
-<img src="https://github.com/zorbaproject/Meatloaf/raw/master/conduttimetro-da-campo/IMG_20191218_223211.jpg" width="200">
+<img src="https://github.com/zorbaproject/Meatloaf/raw/master/conduttimetro-da-campo/menu.gif" width="600">
 
 Lo schema hardware è:
 
-<img src="https://github.com/zorbaproject/Meatloaf/raw/master/conduttimetro-da-campo/conduttimetro_da_campo_bb.png" width="200">
+<img src="https://github.com/zorbaproject/Meatloaf/raw/master/conduttimetro-da-campo/conduttimetro_da_campo_bb.png" width="600">
 
-Sono necessari i seguenti componenti:
-* Arduino UNO R3
-* LCD Keypad shield
-* Datalogging Shield
-* DFRobot Gravity Electric Conductivity Kit K=1 (https://it.farnell.com/dfrobot/dfr0300/analog-electrical-conductivity/dp/2946108)
-* Sensore di temperatura DS18B20
-* Resistenza 10KOhm
+Sono necessari i seguenti componenti (prezzi medi su Aliexpress):
+* Arduino UNO R3  Euro 3,5 oppure Arduino MEGA R3 Euro 8
+* LCD Keypad shield Euro 3
+* Data Logger Shield Euro 2,5
+* DFRobot Gravity Electric Conductivity Kit K=1 (https://it.farnell.com/dfrobot/dfr0300/analog-electrical-conductivity/dp/2946108) (Versione precedente: Euro 34)  Euro 74
+* Sensore di temperatura DS18B20 Euro 1,3
+* Resistenza 10KOhm (Euro 1 pacco da 10 pezzi)
 * Cavi Dupont
+
+L'assemblaggio costa quindi circa 90 euro (poco meno se si usa Arduino UNO) per i circuiti e la sonda, vanno poi aggiunti circa altri 20 euro per i cavi e il case.
+
 Il datalogging shield richiede una pila CR1220 a 3V. Non è chiaro quanto duri, ma sicuramente alcuni anni.
 Da notare che l'orologio viene reimpostato automaticamente aggiornando il firmware.
 
@@ -73,7 +76,7 @@ Il datalogging avviene memorizzando su una scheda SD, una volta al secondo, i pa
 ```
 I dati possono facilmente essere importati in LibreOffice Calc, indicando come lingua di origine l'inglese USA (i numeri sono scritti con il punto invece della virgola) e con la virgola come separatore dei campi. Si tratta infatti di una semplice tabella CSV.
 
-<img src="https://github.com/zorbaproject/Meatloaf/raw/master/conduttimetro-da-campo/plot.png" width="200">
+<img src="https://github.com/zorbaproject/Meatloaf/raw/master/conduttimetro-da-campo/plot.png" width="600">
 
 La prima colonna è un numero sequenziale, che inizia sempre da 0 ogni volta che si attiva il datalogging. In questo modo si possono facilmente riconoscere i vari campionamenti. Se si fa un giro di campionamenti in diversi punti, e si registra più volte la conducibilità, si possono separare i vari dati guardando gli zeri.
 
