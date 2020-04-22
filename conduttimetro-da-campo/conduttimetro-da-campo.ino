@@ -32,6 +32,7 @@
  * OneWire by Jim Studt et al
  * LiquidCrystal by Arduino, Adafruit
  * RTClib by Adafruit
+ * Keypad library by Mark Stanley and Alexander Brevig
  * 
  */
 
@@ -43,6 +44,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include "RTClib.h"
+#include <Keypad.h>
 
 #define buttonsPin A0
 #define EC_PIN A1
@@ -51,14 +53,6 @@
 
 bool datalog = false;
 bool menu1 = false;
-
-int lcd_key     = 0;
-#define btnRIGHT  0
-#define btnUP     1
-#define btnDOWN   2
-#define btnLEFT   3
-#define btnSELECT 4
-#define btnNONE   5
 
 // select the pins used on the LCD panel
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
@@ -79,6 +73,22 @@ int cycleiter = 0;
 DFRobot_EC ec;
 
 RTC_DS1307 rtc;
+
+
+// https://cdn.instructables.com/FUL/940T/ITCHJSHC/FUL940TITCHJSHC.LARGE.jpg
+const byte ROWS = 5; //four rows
+const byte COLS = 4; //three columns
+char keys[ROWS][COLS] = {
+  {'F','G','#','*'},
+  {'1','2','3','U'},
+  {'4','5','6','D'},
+  {'7','8','9','X'},
+  {'L','0','R','E'}
+};
+byte rowPins[ROWS] = {38, 36, 34, 32, 30}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {22, 24, 26, 28}; //connect to the column pinouts of the keypad
+
+Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
 
 void setup()
@@ -106,6 +116,7 @@ void setup()
   if (comp.unixtime()> now.unixtime()) {
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
+
 }
 
 void loop()
@@ -170,46 +181,20 @@ void loop()
         lcd.setCursor(11,0);
         lcd.print("noLOG");
       }
-      lcd_key = read_LCD_buttons();  // read the buttons
-      if (lcd_key==btnSELECT) menu1=true;
+      char key = keypad.getKey();
+      if (key=='E') menu1=true;
+      /*if (key){
+        Serial.println(key);
+      }*/
     }
 }
 
 float readTemperature()
 {
-  //add your code here to get the temperature from your temperature sensor
   sensors.requestTemperatures();
   return sensors.getTempCByIndex(0);
 }
 
-
-// read the buttons
-int read_LCD_buttons()
-{
- //int adc_key_in  = 0;
- int adc_key_in = analogRead(buttonsPin);      // read the value from the sensor
- // my buttons when read are centered at these valies: 0, 144, 329, 504, 741
- // we add approx 50 to those values and check to see if we are close
- if (adc_key_in > 1000) return btnNONE; // We make this the 1st option for speed reasons since it will be the most likely result
- // For V1.1 use this threshold
- if (adc_key_in < 50)   return btnRIGHT;
- if (adc_key_in < 250)  return btnUP;
- if (adc_key_in < 450)  return btnDOWN;
- if (adc_key_in < 650)  return btnLEFT;
- if (adc_key_in < 850)  return btnSELECT;
-
- // For V1.0 comment the other threshold and use the one below:
-/*
- if (adc_key_in < 50)   return btnRIGHT;
- if (adc_key_in < 195)  return btnUP;
- if (adc_key_in < 380)  return btnDOWN;
- if (adc_key_in < 555)  return btnLEFT;
- if (adc_key_in < 790)  return btnSELECT;
-*/
-
-
- return btnNONE;  // when all others fail, return this...
-}
 
 void menu()
 {
@@ -221,13 +206,17 @@ void menu()
   int maxoptions = 6;
   delay(1000);
   while (menu1) {
-    lcd_key = read_LCD_buttons();  // read the buttons
-    if (lcd_key==btnUP) pos+=1;
-    if (lcd_key==btnDOWN) pos-=1;
+    char key = keypad.getKey();
+    if (key=='U') pos+=1;
+    if (key=='D') pos-=1;
+    if (key=='X') {
+      pos=5;
+      menu1=false;
+    }
     if (abs(pos)%maxoptions == 0) {
       lcd.setCursor(0,1);
       lcd.print("Scrivi su SD      ");
-      if (lcd_key==btnSELECT) {
+      if (key=='E') {
         if (datalog) {
           datalog=false;
         } else if (!datalog) {
@@ -245,12 +234,12 @@ void menu()
     if (abs(pos)%maxoptions == 1) {
       lcd.setCursor(0,1);
       lcd.print("Media su       s");
-      if (lcd_key==btnLEFT) {
+      if (key=='L') {
         ecOldLen--;
         if (ecOldLen <1) ecOldLen = 1;
         resizeEcOld();
       }
-      if (lcd_key==btnRIGHT) {
+      if (key=='R') {
         ecOldLen++;
         if (ecOldLen >30) ecOldLen = 30;
         resizeEcOld();
@@ -273,22 +262,22 @@ void menu()
       lcd.setCursor(12,1);
       if (now.month()<10) lcd.print("0");
       lcd.print(now.month());
-      if (lcd_key==btnSELECT) setDateTime();
+      if (key=='E') setDateTime();
     }
     if (abs(pos)%maxoptions == 3) {
       lcd.setCursor(0,1);
       lcd.print("Calibrazione      ");
-      if (lcd_key==btnSELECT) calibrate();
+      if (key=='E') calibrate();
     }
     if (abs(pos)%maxoptions == 4) {
       lcd.setCursor(0,1);
       lcd.print("Reset memoria      ");
-      if (lcd_key==btnSELECT) resetMemory();
+      if (key=='E') resetMemory();
     }
     if (abs(pos)%maxoptions == 5) {
       lcd.setCursor(0,1);
       lcd.print("Esci               ");
-      if (lcd_key==btnSELECT) menu1=false;
+      if (key=='E') menu1=false;
     }
     delay(200);
   }
@@ -341,4 +330,3 @@ void calibrate()
     ec.calibration(voltage,temperature);  // calibration process by Serail CMD
   }
 }
-

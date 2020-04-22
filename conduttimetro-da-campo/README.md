@@ -11,13 +11,15 @@ Lo schema hardware è:
 <img src="https://github.com/zorbaproject/Meatloaf/raw/master/conduttimetro-da-campo/conduttimetro_da_campo_bb.png" width="600">
 
 Sono necessari i seguenti componenti (prezzi medi su Aliexpress):
-* Arduino UNO R3  Euro 3,5 oppure Arduino MEGA R3 Euro 8
-* LCD Keypad shield Euro 3
+* Arduino MEGA R3 Euro 8
+* LCD Keypad shield Euro 3 OPPURE LCD 1602 I2C https://it.aliexpress.com/item/32685612494.html
+* Keypad 4*5 https://it.aliexpress.com/item/4000145872100.html Euro 2
 * Data Logger Shield Euro 2,5
 * DFRobot Gravity Electric Conductivity Kit K=1 (https://it.farnell.com/dfrobot/dfr0300/analog-electrical-conductivity/dp/2946108) (Versione precedente: Euro 34)  Euro 74
 * Sensore di temperatura DS18B20 Euro 1,3
 * Resistenza 10KOhm (Euro 1 pacco da 10 pezzi)
 * Cavi Dupont
+* Scatola derivazione IP55 125x125x75 (https://it.aliexpress.com/item/32985090338.html, 8 euro) oppure 155x115x60
 
 L'assemblaggio costa quindi circa 90 euro (poco meno se si usa Arduino UNO) per i circuiti e la sonda, vanno poi aggiunti circa altri 20 euro per i cavi e il case.
 
@@ -25,6 +27,7 @@ Il datalogging shield richiede una pila CR1220 a 3V. Non è chiaro quanto duri, 
 Da notare che l'orologio viene reimpostato automaticamente aggiornando il firmware.
 
 Affinché lo shield LCD possa funzionare con quello per il datalogging è necessario piegare o rimuovere i pin 10,11,12,13 dello shield LCD.
+Nota: è possibile usare uno schermo LCD 1602 con I2C (https://win.adrirobot.it/rtc_module/immagini/test_rtc-DS1302_bb.jpg)
 
 Nota: il circuito è in grado di funzionare con qualsiasi cella di conducibilità dotata di attacco BNC. Non è necessario modificare il circuito. (Fonte: https://www.dfrobot.com/product-1797.html#comment-4508952573)
 Le celle più economiche sono prodotte da DJS:
