@@ -25,7 +25,7 @@
  * Requirements:
  * EEPROM by Arduino
  * Wire by Arduino
- * SD by Arduino
+ * SD_MEGA by Arduino, Adafruit, Tringali
  * SPI by Arduino
  * DFRobot_EC-master on https://github.com/DFRobot/DFRobot_EC
  * DallasTemperature by Miles Burton et al
@@ -42,14 +42,19 @@
 #include <DallasTemperature.h>
 #include <LiquidCrystal.h>
 #include <SPI.h>
-#include <SD.h>
+#include <SD_MEGA.h>
 #include "RTClib.h"
+
 #include <Keypad.h>
 
 #define buttonsPin A0
 #define EC_PIN A1
 #define ONE_WIRE_BUS 2 
+
 #define chipSelect 10
+#define MOSIpin 11
+#define MISOpin 12
+#define CLKpin 13
 
 bool datalog = false;
 bool menu1 = false;
@@ -99,8 +104,9 @@ void setup()
   lcd.print("Warm up..."); // print a simple message
   ec.begin();
   sensors.begin();
-  //pinMode(10, OUTPUT); 
-  if (!SD.begin(chipSelect)) {
+  
+  //pinMode(chipSelect, OUTPUT); 
+  if (!SD.begin(chipSelect, MOSIpin, MISOpin, CLKpin)) {
     lcd.setCursor(0,0);
     lcd.setCursor(12,0);
     lcd.print("noSD");
