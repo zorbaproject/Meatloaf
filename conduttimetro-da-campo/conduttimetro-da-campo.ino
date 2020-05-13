@@ -28,6 +28,7 @@
  * SD_MEGA by Arduino, Adafruit, Tringali
  * SPI by Arduino
  * DFRobot_EC-master on https://github.com/DFRobot/DFRobot_EC
+ * DFRobot_PH-master on https://github.com/DFRobot/DFRobot_PH
  * DallasTemperature by Miles Burton et al
  * OneWire by Jim Studt et al
  * LiquidCrystal by Arduino, Adafruit
@@ -37,6 +38,7 @@
  */
 
 #include "DFRobot_EC.h"
+#include "DFRobot_PH.h"
 #include <EEPROM.h>
 #include <OneWire.h> 
 #include <DallasTemperature.h>
@@ -44,11 +46,14 @@
 #include <SPI.h>
 #include <SD_MEGA.h>
 #include "RTClib.h"
+//#include <RTClib_Tiny.h>
+//#include <SoftI2CMaster.h> 
 
 #include <Keypad.h>
 
 #define buttonsPin A0
 #define EC_PIN A1
+#define PH_PIN A2
 #define ONE_WIRE_BUS 2 
 
 #define chipSelect 10
@@ -58,6 +63,7 @@
 
 bool datalog = false;
 bool menu1 = false;
+int mode = 1;  //mode 1 reads EC, mode 2 reads PH
 
 // select the pins used on the LCD panel
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
@@ -67,16 +73,19 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 OneWire oneWire(ONE_WIRE_BUS); 
 DallasTemperature sensors(&oneWire);
 
-float voltage,ecValue,temperature = 25;
+float voltageC,voltageP,ecValue,phValue,temperature = 25;
 const float defaultTemp = 20.0;
 
 unsigned long logcount = 0;
-int ecOldLen = 10;
+int allOldLen = 10;
 float* ecOld;
+float* phOld;
 int cycleiter = 0;
 
 DFRobot_EC ec;
+DFRobot_PH ph;
 
+//SoftI2CMaster softi2c=SoftI2CMaster( A5, A4 ); //sclPin=5, sdaPin=4
 RTC_DS1307 rtc;
 
 
@@ -84,7 +93,7 @@ RTC_DS1307 rtc;
 const byte ROWS = 5; //four rows
 const byte COLS = 4; //three columns
 char keys[ROWS][COLS] = {
-  {'F','G','#','*'},
+  {'C','P','#','*'},
   {'1','2','3','U'},
   {'4','5','6','D'},
   {'7','8','9','X'},
@@ -103,6 +112,7 @@ void setup()
   lcd.setCursor(0,0);
   lcd.print("Warm up..."); // print a simple message
   ec.begin();
+  ph.begin();
   sensors.begin();
   
   //pinMode(chipSelect, OUTPUT); 
@@ -112,7 +122,7 @@ void setup()
     lcd.print("noSD");
     delay(2000);
   }
-  resizeEcOld();
+  resizeAllOld();
 
   rtc.begin();
 
@@ -133,25 +143,40 @@ void loop()
     } else if (millis()-timepoint>1000U)  //time interval: 1s
     {
       timepoint = millis();
-      voltage = analogRead(EC_PIN)/1024.0*5000;   // read the voltage
+      voltageC = analogRead(EC_PIN)/1024.0*5000;   // read the voltage
+      voltageP = analogRead(PH_PIN)/1024.0*5000;
       temperature = readTemperature();          // read your temperature sensor to execute temperature compensation
       if (temperature == -127) {
         temperature = defaultTemp;
       }
-      ecValue =  ec.readEC(voltage,temperature);  // convert voltage to EC with temperature compensation
+      ecValue =  ec.readEC(voltageC,temperature);  // convert voltage to EC with temperature compensation
       ecValue = ecValue*1000; //looking for microsiemens
-
+      phValue = ph.readPH(voltageP,temperature);
+      
       //get a mean value
-      for (int i = 0; i < ecOldLen; i++) {
+      for (int i = 0; i < allOldLen; i++) {
         if (i==cycleiter || ecOld[i]<10) ecOld[i] = ecValue;
       }
-      cycleiter++;
-      if (cycleiter>=ecOldLen) cycleiter = 0;
+      //cycleiter++;
+      //if (cycleiter>=allOldLen) cycleiter = 0;
       float ecT = 0;
-      for (int i = 0; i < ecOldLen; i++) {
+      for (int i = 0; i < allOldLen; i++) {
         ecT = ecT + ecOld[i];
       }
-      ecT = ecT/ecOldLen;
+      ecT = ecT/allOldLen;
+
+      //get a mean value
+      for (int i = 0; i < allOldLen; i++) {
+        if (i==cycleiter || phOld[i]<10) phOld[i] = phValue;
+      }
+      float phT = 0;
+      for (int i = 0; i < allOldLen; i++) {
+        phT = phT + phOld[i];
+      }
+      phT = phT/allOldLen;
+      cycleiter++;
+      if (cycleiter>=allOldLen) cycleiter = 0;
+      
       lcd.setCursor(0,0);
       lcd.print("T = ");
       lcd.setCursor(4,0);
@@ -159,22 +184,34 @@ void loop()
       lcd.setCursor(9,0);
       lcd.print("^C");
       lcd.setCursor(0,1);
-      lcd.print("EC = ");
-      lcd.setCursor(5,1);
-      lcd.print(ecT,0);
-      //lcd.print(ecValue,0);
-      lcd.setCursor(10,1);
-      lcd.print("uS/cm");
+      lcd.print("                 ");
+      if (mode==1) {
+        lcd.setCursor(0,1);
+        lcd.print("EC = ");
+        lcd.setCursor(5,1);
+        lcd.print(ecT,0);
+        lcd.setCursor(10,1);
+        lcd.print("uS/cm");
+      }
+      if (mode==2) {
+        lcd.setCursor(0,1);
+        lcd.print("pH = ");
+        lcd.setCursor(5,1);
+        lcd.print(phT,2);
+      }
       if (datalog) {
         File dataFile = SD.open("datalog.txt", FILE_WRITE);
         if (dataFile) {
           dataFile.print(String(logcount));
           dataFile.print(",");
-          dataFile.print(String(rtc.now().timestamp(DateTime::TIMESTAMP_FULL)));
+          //dataFile.print(String(rtc.now().timestamp(DateTime::TIMESTAMP_FULL)));
+          dataFile.print(timestamp_full(rtc.now()));
           dataFile.print(",");
           dataFile.print(String(temperature, DEC));
           dataFile.print(",");
-          dataFile.println(String(ecT, DEC));
+          dataFile.print(String(ecT, DEC));
+          dataFile.print(",");
+          dataFile.println(String(phT, 2));
           dataFile.close();
           lcd.setCursor(12,0);
           lcd.print(" LOG");
@@ -189,6 +226,8 @@ void loop()
       }
       char key = keypad.getKey();
       if (key=='E') menu1=true;
+      if (key=='C') mode=1;
+      if (key=='P') mode=2;
       /*if (key){
         Serial.println(key);
       }*/
@@ -201,6 +240,31 @@ float readTemperature()
   return sensors.getTempCByIndex(0);
 }
 
+String timestamp_full(DateTime mynow) {
+  String mytimestamp = "";
+  mytimestamp += String(mynow.hour());
+  mytimestamp += String(":");
+  mytimestamp += String(mynow.minute());
+  mytimestamp += String(":");
+  mytimestamp += String(mynow.second());
+  mytimestamp += String(" ");
+  mytimestamp += String(mynow.day());
+  mytimestamp += String("/");
+  mytimestamp += String(mynow.month());
+  mytimestamp += String("/");
+  mytimestamp += String(mynow.year());
+  return mytimestamp;
+}
+
+String timestamp_time(DateTime mynow) {
+  String mytimestamp = "";
+  mytimestamp += String(mynow.hour());
+  mytimestamp += String(":");
+  mytimestamp += String(mynow.minute());
+  mytimestamp += String(":");
+  mytimestamp += String(mynow.second());
+  return mytimestamp;
+}
 
 void menu()
 {
@@ -241,25 +305,24 @@ void menu()
       lcd.setCursor(0,1);
       lcd.print("Media su       s");
       if (key=='L') {
-        ecOldLen--;
-        if (ecOldLen <1) ecOldLen = 1;
-        resizeEcOld();
+        allOldLen--;
+        if (allOldLen <1) allOldLen = 1;
+        resizeAllOld();
       }
       if (key=='R') {
-        ecOldLen++;
-        if (ecOldLen >30) ecOldLen = 30;
-        resizeEcOld();
+        allOldLen++;
+        if (allOldLen >30) allOldLen = 30;
+        resizeAllOld();
       }
       lcd.setCursor(13,1);
-      if (ecOldLen<10) lcd.setCursor(14,1);
-      lcd.print(ecOldLen);
+      if (allOldLen<10) lcd.setCursor(14,1);
+      lcd.print(allOldLen);
     }
     if (abs(pos)%maxoptions == 2) {
       DateTime now = rtc.now();
       lcd.setCursor(0,1);
-      //lcd.print(now.timestamp(DateTime::TIMESTAMP_FULL));
-      lcd.print(now.timestamp(DateTime::TIMESTAMP_TIME));
-      //lcd.print(now.timestamp(DateTime::TIMESTAMP_DATE));
+      //lcd.print(now.timestamp(DateTime::TIMESTAMP_TIME));
+      lcd.print(timestamp_time(now));
       lcd.setCursor(12,1);
       lcd.print(now.year());
       lcd.setCursor(10,1);
@@ -289,19 +352,28 @@ void menu()
   }
 }
 
-void resizeEcOld() 
+void resizeAllOld() 
 {
   if (ecOld != 0) {
     delete [] ecOld;
   }
-  ecOld = new float [ecOldLen];
-  for (int i = 0; i < ecOldLen; i++) {
+  ecOld = new float [allOldLen];
+  for (int i = 0; i < allOldLen; i++) {
     ecOld[i] = 0.0;
+  }
+
+  if (phOld != 0) {
+    delete [] phOld;
+  }
+  phOld = new float [allOldLen];
+  for (int i = 0; i < allOldLen; i++) {
+    phOld[i] = 0.0;
   }
 }
 
 void setDateTime() 
 {
+  Serial.println(rtc.now().unixtime());
   // December 16, 2020 at 10pm you would call:
   rtc.adjust(DateTime(2019, 12, 16, 22, 0, 0));
 }
@@ -321,18 +393,29 @@ void calibrate()
     if(millis()-timepoint>1000U)  //time interval: 1s
     {
       timepoint = millis();
-      voltage = analogRead(EC_PIN)/1024.0*5000;  // read the voltage
       temperature = readTemperature();          // read your temperature sensor to execute temperature compensation
       if (temperature == -127) {
         temperature = defaultTemp;
       }
-      ecValue =  ec.readEC(voltage,temperature);  // convert voltage to EC with temperature compensation
-      Serial.print("temperature:");
-      Serial.print(temperature,1);
-      Serial.print("^C  EC:");
-      Serial.print(ecValue,2);
-      Serial.println("ms/cm");
+      if (mode == 1) {
+        voltageC = analogRead(EC_PIN)/1024.0*5000;  // read the voltage
+        ecValue =  ec.readEC(voltageC,temperature);  // convert voltage to EC with temperature compensation
+        Serial.print("temperature:");
+        Serial.print(temperature,1);
+        Serial.print("^C  EC:");
+        Serial.print(ecValue,2);
+        Serial.println("ms/cm");
+      }
+      if (mode == 2) {
+        voltageP = analogRead(PH_PIN)/1024.0*5000;  // read the voltage
+        phValue = ph.readPH(voltageP,temperature);  // convert voltage to pH with temperature compensation
+        Serial.print("temperature:");
+        Serial.print(temperature,1);
+        Serial.print("^C  pH:");
+        Serial.println(phValue,2);
+      }
     }
-    ec.calibration(voltage,temperature);  // calibration process by Serail CMD
+    if (mode==1) ec.calibration(voltageC,temperature);  // calibration process by Serail CMD
+    if (mode==2) ph.calibration(voltageP,temperature);
   }
 }
