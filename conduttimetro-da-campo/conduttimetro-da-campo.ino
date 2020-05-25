@@ -9,6 +9,11 @@
  * Copyright   [DFRobot](http://www.dfrobot.com), 2018
  * Version 1: https://www.dfrobot.com/wiki/index.php/Analog_EC_Meter_SKU:DFR0300
  * 
+ * pH Module code:
+ * https://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2
+ * Copyright   [DFRobot](http://www.dfrobot.com), 2018
+ * Version 1: https://wiki.dfrobot.com/PH_meter_SKU__SEN0161_
+ * 
  * LCD panel and buttons:
  * https://wiki.dfrobot.com/Arduino_LCD_KeyPad_Shield__SKU__DFR0009_
  *Mark Bramwell, July 2010
@@ -266,15 +271,25 @@ String timestamp_time(DateTime mynow) {
   return mytimestamp;
 }
 
-void menu()
+void clearScreen() 
 {
   lcd.setCursor(0,0);
-  lcd.print("Su e giu, select");
+  lcd.print("                    ");
   lcd.setCursor(0,1);
   lcd.print("                    ");
+  delay(1);
+}
+
+void menu()
+{
+  clearScreen();
+  lcd.setCursor(0,0);
+  lcd.print("Scorri il menu ");
+  lcd.setCursor(0,1);
+  lcd.print("premendo su/giu");
   int pos = 0;
   int maxoptions = 6;
-  delay(1000);
+  delay(1500);
   while (menu1) {
     char key = keypad.getKey();
     if (key=='U') pos+=1;
@@ -284,6 +299,9 @@ void menu()
       menu1=false;
     }
     if (abs(pos)%maxoptions == 0) {
+      clearScreen();
+      lcd.setCursor(0,0);
+      lcd.print("Premi Enter");
       lcd.setCursor(0,1);
       lcd.print("Scrivi su SD      ");
       if (key=='E') {
@@ -302,6 +320,9 @@ void menu()
       }
     }
     if (abs(pos)%maxoptions == 1) {
+      clearScreen();
+      lcd.setCursor(0,0);
+      lcd.print("Premi < >");
       lcd.setCursor(0,1);
       lcd.print("Media su       s");
       if (key=='L') {
@@ -319,10 +340,23 @@ void menu()
       lcd.print(allOldLen);
     }
     if (abs(pos)%maxoptions == 2) {
+      clearScreen();
+      lcd.setCursor(0,0);
+      lcd.print("Premi Enter");
       DateTime now = rtc.now();
+      //time
       lcd.setCursor(0,1);
-      //lcd.print(now.timestamp(DateTime::TIMESTAMP_TIME));
-      lcd.print(timestamp_time(now));
+      if (now.hour()<10) lcd.print("0");
+      lcd.print(now.hour());
+      lcd.print(":");
+      lcd.setCursor(3,1);
+      if (now.minute()<10) lcd.print("0");
+      lcd.print(now.minute());
+      lcd.print(":");
+      lcd.setCursor(6,1);
+      if (now.second()<10) lcd.print("0");
+      lcd.print(now.second());
+      //date
       lcd.setCursor(12,1);
       lcd.print(now.year());
       lcd.setCursor(10,1);
@@ -334,16 +368,25 @@ void menu()
       if (key=='E') setDateTime();
     }
     if (abs(pos)%maxoptions == 3) {
+      clearScreen();
+      lcd.setCursor(0,0);
+      lcd.print("Premi Enter");
       lcd.setCursor(0,1);
       lcd.print("Calibrazione      ");
       if (key=='E') calibrate();
     }
     if (abs(pos)%maxoptions == 4) {
+      clearScreen();
+      lcd.setCursor(0,0);
+      lcd.print("Premi Enter");
       lcd.setCursor(0,1);
       lcd.print("Reset memoria      ");
       if (key=='E') resetMemory();
     }
     if (abs(pos)%maxoptions == 5) {
+      clearScreen();
+      lcd.setCursor(0,0);
+      lcd.print("Premi Enter");
       lcd.setCursor(0,1);
       lcd.print("Esci               ");
       if (key=='E') menu1=false;
@@ -373,22 +416,106 @@ void resizeAllOld()
 
 void setDateTime() 
 {
+  clearScreen();
+  lcd.setCursor(0,0);
+  lcd.print("Digita ora data");
   Serial.println(rtc.now().unixtime());
   // December 16, 2020 at 10pm you would call:
-  rtc.adjust(DateTime(2019, 12, 16, 22, 0, 0));
+  //rtc.adjust(DateTime(2019, 12, 16, 22, 0, 0));
+  int year = 2000;
+  int month = 0;
+  int day = 0;
+  int hour = 0;
+  int minute = 0;
+  int second = 0;
+  int pos = 0;
+  while (true) {
+    char key = keypad.getKey();
+    if (key=='X') return;
+    int num = 0;
+    if (key=='0') num = 0;
+    if (key=='1') num = 1;
+    if (key=='2') num = 2;
+    if (key=='3') num = 3;
+    if (key=='4') num = 4;
+    if (key=='5') num = 5;
+    if (key=='6') num = 6;
+    if (key=='7') num = 7;
+    if (key=='8') num = 8;
+    if (key=='9') num = 9;
+    
+    if (pos==0) hour=num*10;
+    if (pos==1) hour=hour+num;
+    if (pos==2) minute=num*10;
+    if (pos==3) minute=minute+num;
+    if (pos==4) second=num*10;
+    if (pos==5) second=second+num;
+
+    if (pos==6) day=num*10;
+    if (pos==7) day=day+num;
+    if (pos==8) month=num*10;
+    if (pos==9) month=month+num;
+    if (pos==10) year=year+(num*10);
+    if (pos==11) year=year+num;
+    if (key=='0' || key=='1' || key=='2' || key=='3' || key=='4' || key=='5' || key=='6' || key=='7' || key=='8' || key=='9') pos++;
+    if (key=='E') {
+      rtc.adjust(DateTime(year, month, day, hour, minute, second));
+      return;
+    }
+    //TODO: use left right arrow to move between pos
+    
+    //time
+    lcd.setCursor(0,1);
+    if (hour<10) lcd.print("0");
+    lcd.print(hour);
+    lcd.print(":");
+    lcd.setCursor(3,1);
+    if (minute<10) lcd.print("0");
+    lcd.print(minute);
+    lcd.print(":");
+    lcd.setCursor(6,1);
+    if (second<10) lcd.print("0");
+    lcd.print(second);
+    //date
+    lcd.setCursor(12,1);
+    lcd.print(year);
+    lcd.setCursor(10,1);
+    if (day<10) lcd.print("0");
+    lcd.print(day);
+    lcd.setCursor(12,1);
+    if (month<10) lcd.print("0");
+    lcd.print(month);
+    
+    int curpos = pos;
+    if (pos>1) curpos=curpos+1;
+    if (pos>3) curpos=curpos+1;
+    if (pos>5) curpos=curpos+2;
+    lcd.setCursor(curpos,1);
+    lcd.print("_");
+    delay(200);
+  }
 }
 
 void resetMemory() 
 {
-  for(byte i = 0;i< 8; i   ){
-    //EEPROM.write(KVALUEADDR i, 0xFF);
+  lcd.setCursor(0,0);
+  lcd.print("Reset memoria     ");
+  lcd.setCursor(0,1);
+  lcd.print("In corso...       ");
+  delay(200);
+  for(byte i = 0;i< 8; i++){
+    EEPROM.write(KVALUEADDR+i, 0xFF);
   }
+  lcd.setCursor(0,1);
+  lcd.print("Terminato          ");
+  delay(200);
 }
 
 void calibrate() 
 {
   bool active = true;
   while (active) {
+    char cmd[10];
     static unsigned long timepoint = millis();
     if(millis()-timepoint>1000U)  //time interval: 1s
     {
@@ -415,7 +542,200 @@ void calibrate()
         Serial.println(phValue,2);
       }
     }
-    if (mode==1) ec.calibration(voltageC,temperature);  // calibration process by Serail CMD
-    if (mode==2) ph.calibration(voltageP,temperature);
+    int iteration = 0;
+    if (mode==1) {
+      if (iteration==0) {
+        Serial.println("Available commands:");
+        Serial.println("enterec");
+        Serial.println("calec");
+        Serial.println("exitec");
+        ec.calibration(voltageC,temperature,"enterec\0");
+        lcd.setCursor(0,0);
+        lcd.print("Immergi in 1413us/cm");
+        lcd.setCursor(0,1);
+        lcd.print("Poi premi Enter");
+        char key = keypad.getKey();
+        while (true) {
+          temperature = readTemperature();
+          voltageC = analogRead(EC_PIN)/1024.0*5000;
+          Serial.println(voltageC);
+          key = keypad.getKey();
+          if (key=='X') return;
+          if (key=='E') {
+            iteration++;
+            break;
+          }
+          delay(200);
+        }
+      }
+      if (iteration==1) {
+        ec.calibration(voltageC,temperature,"calec\0");
+        lcd.setCursor(0,0);
+        lcd.print("Immergi in 12.88ms/cm");
+        lcd.setCursor(0,1);
+        lcd.print("Poi premi Enter");
+        char key = keypad.getKey();
+        while (true) {
+          temperature = readTemperature();
+          voltageC = analogRead(EC_PIN)/1024.0*5000;
+          Serial.println(voltageC);
+          key = keypad.getKey();
+          if (key=='X') return;
+          if (key=='E') {
+            iteration++;
+            break;
+          }
+          delay(200);
+        }
+      }
+      if (iteration==2) {
+        ec.calibration(voltageC,temperature,"calec\0");
+        lcd.setCursor(0,0);
+        lcd.print("Premi Enter     ");
+        lcd.setCursor(0,1);
+        lcd.print("per salvare     ");
+        char key = keypad.getKey();
+        while (true) {
+          temperature = readTemperature();
+          voltageC = analogRead(EC_PIN)/1024.0*5000;
+          Serial.println(voltageC);
+          key = keypad.getKey();
+          if (key=='X') return;
+          if (key=='E') {
+            iteration++;
+            break;
+          }
+          delay(200);
+        }
+      }
+      if (iteration==3) {
+        ec.calibration(voltageC,temperature,"exitec\0");
+        lcd.setCursor(0,0);
+        lcd.print("Salvato          ");
+        lcd.setCursor(0,1);
+        lcd.print("Premi Enter      ");
+        char key = keypad.getKey();
+        while (true) {
+          key = keypad.getKey();
+          if (key=='X') return;
+          if (key=='E') {
+            return;
+          }
+          delay(200);
+        }
+      }
+    }
+ 
+    if (mode==2) {
+      if (iteration==0) {
+        Serial.println("Available commands:");
+        Serial.println("enterph");
+        Serial.println("calph");
+        Serial.println("exitph");
+        ph.calibration(voltageP,temperature,"enterph\0");
+        lcd.setCursor(0,0);
+        lcd.print("Immergi in pH7.0");
+        lcd.setCursor(0,1);
+        lcd.print("Poi premi Enter");
+        char key = keypad.getKey();
+        while (true) {
+          temperature = readTemperature();
+          voltageP = analogRead(PH_PIN)/1024.0*5000;
+          Serial.println(voltageP);
+          key = keypad.getKey();
+          if (key=='X') return;
+          if (key=='E') {
+            iteration++;
+            break;
+          }
+          delay(200);
+        }
+      }
+      if (iteration==1) {
+        ph.calibration(voltageP,temperature,"calph\0");
+        lcd.setCursor(0,0);
+        lcd.print("Immergi in ph4.0");
+        lcd.setCursor(0,1);
+        lcd.print("Poi premi Enter");
+        char key = keypad.getKey();
+        while (true) {
+          temperature = readTemperature();
+          voltageP = analogRead(PH_PIN)/1024.0*5000;
+          Serial.println(voltageP);
+          key = keypad.getKey();
+          if (key=='X') return;
+          if (key=='E') {
+            iteration++;
+            break;
+          }
+          delay(200);
+        }
+      }
+      if (iteration==2) {
+        ph.calibration(voltageP,temperature,"calph\0");
+        lcd.setCursor(0,0);
+        lcd.print("Premi Enter     ");
+        lcd.setCursor(0,1);
+        lcd.print("per salvare     ");
+        char key = keypad.getKey();
+        while (true) {
+          temperature = readTemperature();
+          voltageP = analogRead(PH_PIN)/1024.0*5000;
+          Serial.println(voltageP);
+          key = keypad.getKey();
+          if (key=='X') return;
+          if (key=='E') {
+            iteration++;
+            break;
+          }
+          delay(200);
+        }
+      }
+      if (iteration==3) {
+        ph.calibration(voltageP,temperature,"exitph\0");
+        lcd.setCursor(0,0);
+        lcd.print("Salvato          ");
+        lcd.setCursor(0,1);
+        lcd.print("Premi Enter      ");
+        char key = keypad.getKey();
+        while (true) {
+          key = keypad.getKey();
+          if (key=='X') return;
+          if (key=='E') {
+            return;
+          }
+          delay(200);
+        }
+      }
+    }
+
+    if(readSerial(cmd)){
+        strupr(cmd);
+        if(strstr(cmd,"PH")){
+            ph.calibration(voltageP,temperature,cmd);       //PH calibration process by Serail CMD
+        }
+        if(strstr(cmd,"EC")){
+            ec.calibration(voltageC,temperature,cmd);       //EC calibration process by Serail CMD
+        }
+    }
   }
+}
+
+bool readSerial(char result[]){
+  int i = 0;
+    while(Serial.available() > 0){
+        char inChar = Serial.read();
+        if(inChar == '\n'){
+             result[i] = '\0';
+             Serial.flush();
+             i=0;
+             return true;
+        }
+        if(inChar != '\r'){
+             result[i] = inChar;
+             i++;
+        }
+        delay(1);
+    }
+    return false;
 }
