@@ -8,7 +8,7 @@ Questo è l'attuale prototipo:
 
 Lo schema hardware è:
 
-<img src="https://github.com/zorbaproject/Meatloaf/raw/master/conduttimetro-da-campo/conduttimetro_da_campo_bb.png" width="600">
+<img src="https://github.com/zorbaproject/Meatloaf/raw/master/conduttimetro-da-campo/manuale/foto_conduttimetro/conduttimetro_da_campo_bb.png" width="600">
 
 Sono necessari i seguenti componenti (prezzi medi su Aliexpress):
 * Arduino MEGA R3 Euro 8
