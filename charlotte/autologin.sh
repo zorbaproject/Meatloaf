@@ -52,7 +52,8 @@ chmod +x $myexec
 chown $username:$username /home/$username/appstart
 
 #Disable old autologins, give user access to tty
-sudo systemctl disable sddm.service
+sudo systemctl disable lightdm.service
+#sudo systemctl disable sddm.service
 sudo systemctl disable getty.target
 sudo systemctl disable getty@tty1.service
 sudo usermod -a -G tty $username

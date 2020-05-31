@@ -1,7 +1,17 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import sys, os
+from time import sleep
+import json
+import math
+
+
 try:
+    #Devono essere abilitati i 1-Wire
+    os.system('sudo modprobe w1-gpio')
+    os.system('sudo modprobe w1-therm')
+
     import RPi.GPIO as GPIO
     import w1thermsensor
     import board
@@ -11,10 +21,7 @@ try:
     isRPI = True
 except:
     isRPI = False
-import sys, os
-from time import sleep
-import json
-import math
+
 
 try:
     from PySide2.QtWidgets import QApplication
@@ -70,12 +77,6 @@ class getLidar(QThread):
         self.reachTemp()
         return
 
-    def readTemp(self):
-        #Leggo la temperatura
-        temperature_in_celsius = self.sensor.get_temperature()
-        print("Temperatura:"+str(temperature_in_celsius)+"° C")
-        return temperature_in_celsius
-
     def reachTemp(self):
         global toSleep
         try:
@@ -102,29 +103,26 @@ class getData(QThread):
             self.exit()
         #Cerco i sensori
         self.i2c = busio.I2C(board.SCL, board.SDA)
-        self.mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(i2c)
-        self.accel = adafruit_lsm303_accel.LSM303_Accel(i2c)
-        self.sensor = w1thermsensor.W1ThermSensor()
+        self.mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(self.i2c)
+        self.accel = adafruit_lsm303_accel.LSM303_Accel(self.i2c)
+        try:
+            self.sensor = w1thermsensor.W1ThermSensor()
+        except:
+            self.sensor = None
 
     def __del__(self):
         print("Shutting down thread")
 
     def run(self):
         global toSleep
-        while True:
-            #self.myparent.w.temperature.setValue(self.readTemp())
+        while not self.myparent.w.manualMode.isChecked():
             self.requiredData = {}
             try:
                 self.requiredData["temperature"] = self.readTemp()
             except:
                 self.requiredData["temperature"] = -127
-            #https://tutorials-raspberrypi.com/measuring-rotation-and-acceleration-raspberry-pi/
-            #https://learn.adafruit.com/lsm303-accelerometer-slash-compass-breakout/python-circuitpython
             mag_x, mag_y, mag_z = self.mag.magnetic
             accel_x,accel_y,accel_z = self.accel.acceleration
-            #print("Rotation X (Side Tilt): "+str(self.get_x_rotation(accel_x,accel_y,accel_z)))
-            #print("Rotation Y (Frontal Inclination): "+str(self.get_y_rotation(accel_x,accel_y,accel_z)))
-            #print("Heading: "+str(self.get_heading(mag_x,mag_y,mag_z)))
             self.requiredData["sideTilt"] = self.get_x_rotation(accel_x,accel_y,accel_z)
             self.requiredData["frontalInclination"] = self.get_y_rotation(accel_x,accel_y,accel_z)
             self.requiredData["heading"] = self.get_heading(mag_x,mag_y,mag_z)
@@ -180,9 +178,6 @@ class MainWindow(QMainWindow):
         self.mycfg = {}
         self.loadPersonalCFG()
         if isRPI:
-            #Devono essere abilitati i 1-Wire
-            os.system('sudo modprobe w1-gpio')
-            os.system('sudo modprobe w1-therm')
             self.stoponreached = False
             self.getDataThread = getData(self)
             self.getDataThread.start()
@@ -241,15 +236,15 @@ class MainWindow(QMainWindow):
         self.w.sideTilt.setValue(self.requiredData["sideTilt"])
         self.w.frontalInclination.setValue(self.requiredData["frontalInclination"])
         self.w.heading.setValue(self.requiredData["heading"])
-        self.w.temperature.setValue(self.requiredData["distance"])
+        self.w.distance.setValue(self.requiredData["distance"])
 
-    def validateData():
+    def validateData(self):
         try:
             if self.requiredData["temperature"] < -100:
                 t = 0/0
         except:
             self.requiredData["temperature"] = 0.0
-            print("Error reading temperature")
+            #print("Error reading temperature")
 
     def doLidarScan(self):
         output = []
