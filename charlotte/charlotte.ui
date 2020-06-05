@@ -28,7 +28,7 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_6">
           <item>
-           <widget class="QLineEdit" name="path"/>
+           <widget class="QLineEdit" name="cavename"/>
           </item>
           <item>
            <widget class="QPushButton" name="selectcave">
@@ -125,7 +125,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QDoubleSpinBox" name="left"/>
+           <widget class="QDoubleSpinBox" name="leftW"/>
           </item>
           <item>
            <widget class="QLabel" name="label_8">
@@ -135,7 +135,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QDoubleSpinBox" name="right"/>
+           <widget class="QDoubleSpinBox" name="rightW"/>
           </item>
           <item>
            <widget class="QLabel" name="label_9">
@@ -145,7 +145,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QDoubleSpinBox" name="up"/>
+           <widget class="QDoubleSpinBox" name="upW"/>
           </item>
           <item>
            <widget class="QLabel" name="label_10">
@@ -155,7 +155,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QDoubleSpinBox" name="down"/>
+           <widget class="QDoubleSpinBox" name="downW"/>
           </item>
          </layout>
         </item>
@@ -179,7 +179,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="from"/>
+           <widget class="QLineEdit" name="fromP"/>
           </item>
           <item>
            <widget class="QLabel" name="label_2">
@@ -189,20 +189,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="to"/>
-          </item>
-          <item>
-           <widget class="QPushButton" name="save">
-            <property name="styleSheet">
-             <string notr="true">background-color: rgb(0, 255, 0);</string>
-            </property>
-            <property name="text">
-             <string>Salva misurazione</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-           </widget>
+           <widget class="QLineEdit" name="toP"/>
           </item>
          </layout>
         </item>
@@ -212,26 +199,43 @@
            <widget class="QGraphicsView" name="section"/>
           </item>
           <item>
-           <layout class="QGridLayout" name="gridLayout_2">
-            <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="temperature"/>
-            </item>
-            <item row="0" column="1">
-             <widget class="QDoubleSpinBox" name="pressure"/>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_13">
+           <layout class="QVBoxLayout" name="verticalLayout_8">
+            <item>
+             <widget class="QPushButton" name="save">
+              <property name="styleSheet">
+               <string notr="true">background-color: rgb(0, 255, 0);</string>
+              </property>
               <property name="text">
-               <string>Temperatura</string>
+               <string>Salva misurazione</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
               </property>
              </widget>
             </item>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label_14">
-              <property name="text">
-               <string>Pressione</string>
-              </property>
-             </widget>
+            <item>
+             <layout class="QGridLayout" name="gridLayout_2">
+              <item row="0" column="1">
+               <widget class="QDoubleSpinBox" name="pressure"/>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_13">
+                <property name="text">
+                 <string>Temperatura</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QDoubleSpinBox" name="temperature"/>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_14">
+                <property name="text">
+                 <string>Pressione</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -339,6 +343,9 @@
              <property name="text">
               <string>Inizia sempre dall'ultima grotta</string>
              </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
             </widget>
            </item>
           </layout>
@@ -397,13 +404,20 @@
       </widget>
       <widget class="QWidget" name="tab_3">
        <attribute name="title">
-        <string>Chiudi</string>
+        <string>Modalità</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_7">
         <item>
          <widget class="QPushButton" name="exit">
           <property name="text">
            <string>Chiudi il programma</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="accesspoint">
+          <property name="text">
+           <string>Access point WiFi</string>
           </property>
          </widget>
         </item>
@@ -430,8 +444,15 @@
        <layout class="QVBoxLayout" name="verticalLayout_5">
         <item>
          <widget class="QLabel" name="aiuto">
+          <property name="inputMethodHints">
+           <set>Qt::ImhNone</set>
+          </property>
           <property name="text">
-           <string>Charlotte è una applicazione sviluppata dal Gruppo Speleologico Talpe del Carso.</string>
+           <string>Charlotte è un dispositivo sviluppato dal Gruppo Speleologico Talpe del Carso.
+Permette di realizzare rilievi topografici vettoriali delle cavità naturali e artificiali in modo automatico.</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
