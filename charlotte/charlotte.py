@@ -210,6 +210,8 @@ class MainWindow(QMainWindow):
     def accesspoint(self):
         if isRPI:
             print("Access Point mode")
+            os.system(os.path.abspath(os.path.dirname(sys.argv[0]))+'/accesspoint.sh')
+            self.w.statusbar.showMessage("Please connect to charlotte.lan or 192.168.1.1")
             #attiviamo la scheda wifi
             #abilitiamo un samba share sulla cartella dei rilievi
             #abilitiamo un server web con listing dei file sulla cartella dei rilievi
@@ -227,7 +229,7 @@ class MainWindow(QMainWindow):
             self.mycfg = json.loads(lines.replace("\n", "").replace("\r", ""))
         except:
             print("Creo il file di configurazione")
-        cfgtemplate = {'outputfolder': QDir.homePath() + "/charlotte", 'lastcave': '', 'startfromlastcave': 'True',
+        cfgtemplate = {'outputfolder': QDir.homePath() + "/charlottedata", 'lastcave': '', 'startfromlastcave': 'True',
         'calibration': {
         'x': {'min': '', 'max':''},
         'y': {'min': '', 'max':''},
@@ -241,6 +243,11 @@ class MainWindow(QMainWindow):
                 self.savePersonalCFG()
         if not os.path.isdir(self.mycfg["outputfolder"]) and not os.path.isfile(self.mycfg["outputfolder"]):
             os.mkdir(self.mycfg["outputfolder"])
+            #if Rpi:
+            #    os.system('echo "Options +Indexes" >> "'+self.mycfg["outputfolder"]+'/.htaccess"')
+            #TODO: check if /var/www/html is actually a symlink
+            #    os.system('sudo rm /var/www/html')
+            #    os.system('#    'sudo ln -s "'+self.mycfg["outputfolder"]+'" /var/www/html')
         if not os.path.isdir(self.mycfg["outputfolder"]):
             self.mycfg["outputfolder"] = cfgtemplate["outputfolder"]
             self.savePersonalCFG()

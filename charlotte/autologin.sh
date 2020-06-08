@@ -45,6 +45,10 @@ cat <<EOF > /home/$username/appstart
 sleep 1
 # use this if Xorg starts on tty7
 # sudo chvt 7
+#disable wifi and bluetooth
+sudo rfkill block 0
+sudo rfkill block 1
+#launch app
 /usr/bin/python3 $myexec
 EOF
 chmod +x /home/$username/appstart
