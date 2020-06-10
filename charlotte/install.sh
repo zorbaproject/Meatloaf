@@ -18,6 +18,8 @@ sudo apt install libpyside2-dev pyside2-tools
 sudo apt install python3-pyside2*
 #Minimalistic option: sudo apt install python3-pyside2.qtgui python3-pyside2.qtcore python3-pyside2.qtconcurrent
 
+sudo pip3 install ezdxf
+
 wget https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/adafruit-pitft.sh
 chmod +x adafruit-pitft.sh
 echo "Please enable your LCD TFT module (Suggested options: 5, 1, N, Y, N)"
