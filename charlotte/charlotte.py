@@ -465,14 +465,16 @@ class MainWindow(QMainWindow):
             right = []
             up = []
             down = []
+            Ppath.moveTo(QPointF(0, 0))
+            Spath.moveTo(QPointF(0, 0))
             for point in branch:
-                print(point)
+                #print(point)
                 myX = self.myCoordinates[point]["pos"][0]
                 myY = self.myCoordinates[point]["pos"][1]
                 myZ = self.myCoordinates[point]["pos"][2]
                 Ppath.lineTo(QPointF(myX, myY))
                 Spath.lineTo(QPointF(myY, myZ))
-                print(Ppath.currentPosition())
+                #print(Ppath.currentPosition())
                 lX = self.myCoordinates[point]["left"][0]
                 lY = self.myCoordinates[point]["left"][1]
                 lZ = self.myCoordinates[point]["left"][2]
@@ -489,6 +491,8 @@ class MainWindow(QMainWindow):
                 right.append([rX,rY])
                 up.append([uY,uZ])
                 down.append([dY,dZ])
+            Ppoligon.moveTo(QPointF(left[0][0], left[0][1]))
+            Spoligon.moveTo(QPointF(up[0][0], up[0][1]))
             for p in left:
                 #c1 = Ppath.currentPosition()
                 #c2 = QPointF(p[0], p[1])
@@ -496,11 +500,13 @@ class MainWindow(QMainWindow):
                 Ppoligon.lineTo(QPointF(p[0], p[1]))
             right.reverse()
             right.append(left[0]) #close the line
+            right = right[1:]
             for p in right:
                 #c1 = Ppath.currentPosition()
                 #c2 = QPointF(p[0], p[1])
                 #Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
                 Ppoligon.lineTo(QPointF(p[0], p[1]))
+            #up = up[1:]
             for p in up:
                 #c1 = Ppath.currentPosition()
                 #c2 = QPointF(p[0], p[1])
@@ -508,6 +514,7 @@ class MainWindow(QMainWindow):
                 Spoligon.lineTo(QPointF(p[0], p[1]))
             down.reverse()
             down.append(up[0]) #close the line
+            down = down[1:]
             for p in down:
                 #c1 = Ppath.currentPosition()
                 #c2 = QPointF(p[0], p[1])
@@ -567,6 +574,21 @@ class MainWindow(QMainWindow):
             #https://ezdxf.readthedocs.io/en/stable/layouts/layouts.html#ezdxf.layouts.BaseLayout.add_line
             print((fromX, fromY, fromZ), (toX, toY, toZ))
             msp.add_line((fromX, fromY, fromZ), (toX, toY, toZ))  # add a LINE entity
+            lX = self.myCoordinates[row["from"]]["left"][0]
+            lY = self.myCoordinates[row["from"]]["left"][1]
+            lZ = self.myCoordinates[row["from"]]["left"][2]
+            rX = self.myCoordinates[row["from"]]["right"][0]
+            rY = self.myCoordinates[row["from"]]["right"][1]
+            rZ = self.myCoordinates[row["from"]]["right"][2]
+            uX = self.myCoordinates[row["from"]]["up"][0]
+            uY = self.myCoordinates[row["from"]]["up"][1]
+            uZ = self.myCoordinates[row["from"]]["up"][2]
+            dX = self.myCoordinates[row["from"]]["down"][0]
+            dY = self.myCoordinates[row["from"]]["down"][1]
+            dZ = self.myCoordinates[row["from"]]["down"][2]
+            #https://ezdxf.readthedocs.io/en/stable/tutorials/spline.html
+            fit_points = [(lX, lY, lZ), (uX, uY, uZ), (rX, rY, rZ), (dX, dY, dZ), (lX, lY, lZ)]
+            spline = msp.add_spline(fit_points) #we might have some problems opening it with blender
         cleanedname = self.cleanName(self.w.cavename.text())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
         Dfilename = cavefolder + "/" + cleanedname + ".dxf"
@@ -645,13 +667,18 @@ class MainWindow(QMainWindow):
     def getCoordinates(self, Cfile):
         coord = {}
         pointname = Cfile["measurements"][0]["from"]
-        coord[pointname] = {"pos":[0,0,0],"left":[0,-Cfile["measurements"][0]["walls"]['left'],0],"right":[0,Cfile["measurements"][0]["walls"]['right'],0],"up":[0,0,Cfile["measurements"][0]["walls"]['up']],"down":[0,0,-Cfile["measurements"][0]["walls"]['down']]}
+        frompointname = Cfile["measurements"][0]["from"]
+        myX = 0
+        myY = 0
+        myZ = 0
+        coord[pointname] = self.getPointWalls(pointname, frompointname, myX, myY, myZ)
         for row in Cfile["measurements"]:
             pointname = row["to"]
+            frompointname = row["from"]
             try:
-                fromX = coord[row["from"]]["pos"][0]
-                fromY = coord[row["from"]]["pos"][1]
-                fromZ = coord[row["from"]]["pos"][2]
+                fromX = coord[frompointname]["pos"][0]
+                fromY = coord[frompointname]["pos"][1]
+                fromZ = coord[frompointname]["pos"][2]
             except:
                 fromX = 0
                 fromY = 0
@@ -669,30 +696,48 @@ class MainWindow(QMainWindow):
             myX = fromX + (dist*(math.cos(math.radians(heading))))
             myY = fromY + (dist*(math.sin(math.radians(heading))))
             myZ = fromZ + (dist*(math.sin(math.radians(incl))))
-            #coord[pointname] = [myX,myY,myZ]
-            rawdata = self.getFromPointData(Cfile, pointname)
-            if len(rawdata) >0:
-                l = rawdata["walls"]['left']
-                r = rawdata["walls"]['right']
-                u = rawdata["walls"]['up']
-                d = rawdata["walls"]['down']
-                lX = myX + (l*(math.cos(math.radians(heading+90))))
-                lY = myY + (l*(math.sin(math.radians(heading+90))))
-                lZ = myZ + (l*(math.cos(math.radians(incl))))
-                rX = myX + (r*(math.cos(math.radians(heading-90))))
-                rY = myY + (r*(math.sin(math.radians(heading-90))))
-                rZ = myZ + (r*(math.cos(math.radians(incl))))
-                uX = myX + (u*(math.cos(math.radians(heading))))
-                uY = myY + (u*(math.sin(math.radians(heading))))
-                uZ = myZ + (u*(math.sin(math.radians(incl+90))))
-                dX = myX + (d*(math.cos(math.radians(heading))))
-                dY = myY + (d*(math.sin(math.radians(heading))))
-                dZ = myZ + (d*(math.sin(math.radians(incl-90))))
-                coord[pointname] = {"pos":[myX,myY,myZ],"left":[lX,lY,lZ],"right":[rX,rY,rZ],"up":[uX,uY,uZ],"down":[dX,dY,dZ]}
-            else:
-                coord[pointname] = {"pos":[myX,myY,myZ],"left":[myX,myY,myZ],"right":[myX,myY,myZ],"up":[myX,myY,myZ],"down":[myX,myY,myZ]}
-            print(coord[pointname]["pos"])
+            coord[pointname] = self.getPointWalls(pointname, frompointname, myX, myY, myZ)
+            print(coord[pointname]["up"])
+            print(coord[pointname]["down"])
         self.myCoordinates = coord
+
+    def getPointWalls(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
+        pcoords = {}
+        if Cfile == None:
+            Cfile = self.myCaveFile
+        rawdata = self.getFromPointData(Cfile, frompointname)
+        try:
+            sideTilt = rawdata["topographic"]['sideTilt']
+            incl = rawdata["topographic"]['frontalInclination']
+            heading = rawdata["topographic"]['heading']
+            dist = rawdata["topographic"]['distance']
+        except:
+            sideTilt = 0
+            incl = 0
+            heading = 0
+            dist = 0
+        rawdata = self.getFromPointData(Cfile, pointname)
+        if len(rawdata) >0:
+            l = rawdata["walls"]['left']
+            r = rawdata["walls"]['right']
+            u = rawdata["walls"]['up']
+            d = rawdata["walls"]['down']
+            lX = myX + (l*(math.cos(math.radians(heading+90))))
+            lY = myY + (l*(math.sin(math.radians(heading+90))))
+            lZ = myZ + (l*(math.cos(math.radians(incl))))
+            rX = myX + (r*(math.cos(math.radians(heading-90))))
+            rY = myY + (r*(math.sin(math.radians(heading-90))))
+            rZ = myZ + (r*(math.cos(math.radians(incl))))
+            uX = myX + (u*(math.cos(math.radians(heading))))
+            uY = myY + (u*(math.sin(math.radians(heading+90))))
+            uZ = myZ + (u*(math.sin(math.radians(incl+90))))
+            dX = myX + (d*(math.cos(math.radians(heading))))
+            dY = myY + (d*(math.sin(math.radians(heading-90))))
+            dZ = myZ + (d*(math.sin(math.radians(incl-90))))
+            pcoords = {"pos":[myX,myY,myZ],"left":[lX,lY,lZ],"right":[rX,rY,rZ],"up":[uX,uY,uZ],"down":[dX,dY,dZ]}
+        else:
+            pcoords = {"pos":[myX,myY,myZ],"left":[myX,myY,myZ],"right":[myX,myY,myZ],"up":[myX,myY,myZ],"down":[myX,myY,myZ]}
+        return pcoords
 
     def populateTable(self, CSV):
         #TODO: delete rows and columns
