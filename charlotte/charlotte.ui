@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="misurazione">
        <attribute name="title">
@@ -375,9 +375,12 @@
               </widget>
              </item>
              <item>
-              <widget class="QCheckBox" name="dxfwire">
+              <widget class="QCheckBox" name="dxfmesh">
                <property name="text">
-                <string>DXF wireframe</string>
+                <string>Mesh in DXF</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
                </property>
               </widget>
              </item>

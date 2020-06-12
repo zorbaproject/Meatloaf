@@ -562,7 +562,8 @@ class MainWindow(QMainWindow):
         doc = ezdxf.new('R2010')  # create a new DXF R2010 drawing, official DXF version name: 'AC1024'
 
         msp = doc.modelspace()  # add new entities to the modelspace
-
+        if self.w.dxfmesh.isChecked():
+            mesh = msp.add_mesh()
         for row in Cfile["measurements"]:
             fromX = self.myCoordinates[row["from"]]["pos"][0]
             fromY = self.myCoordinates[row["from"]]["pos"][1]
@@ -570,9 +571,9 @@ class MainWindow(QMainWindow):
             toX = self.myCoordinates[row["to"]]["pos"][0]
             toY = self.myCoordinates[row["to"]]["pos"][1]
             toZ = self.myCoordinates[row["to"]]["pos"][2]
+            #print((fromX, fromY, fromZ), (toX, toY, toZ))
             thickness = 0
             #https://ezdxf.readthedocs.io/en/stable/layouts/layouts.html#ezdxf.layouts.BaseLayout.add_line
-            print((fromX, fromY, fromZ), (toX, toY, toZ))
             msp.add_line((fromX, fromY, fromZ), (toX, toY, toZ))  # add a LINE entity
             lX = self.myCoordinates[row["from"]]["left"][0]
             lY = self.myCoordinates[row["from"]]["left"][1]
@@ -586,22 +587,46 @@ class MainWindow(QMainWindow):
             dX = self.myCoordinates[row["from"]]["down"][0]
             dY = self.myCoordinates[row["from"]]["down"][1]
             dZ = self.myCoordinates[row["from"]]["down"][2]
-            #https://ezdxf.readthedocs.io/en/stable/tutorials/spline.html
-            fit_points = [(lX, lY, lZ), (uX, uY, uZ), (rX, rY, rZ), (dX, dY, dZ), (lX, lY, lZ)]
-            dxfspline = False
+            dxfspline = False  #we might have some problems opening it with blender, we use a line
             if dxfspline:
-                spline = msp.add_spline(fit_points) #we might have some problems opening it with blender
+                #https://ezdxf.readthedocs.io/en/stable/tutorials/spline.html
+                fit_points = [(lX, lY, lZ), (uX, uY, uZ), (rX, rY, rZ), (dX, dY, dZ), (lX, lY, lZ)]
+                spline = msp.add_spline(fit_points)
             else:
+                #we should check if a section is available. if not, just use walls points
                 msp.add_line((lX, lY, lZ), (uX, uY, uZ))
                 msp.add_line((uX, uY, uZ), (rX, rY, rZ))
                 msp.add_line((rX, rY, rZ), (dX, dY, dZ))
                 msp.add_line((dX, dY, dZ), (lX, lY, lZ))
-            dxfwire = True
-            if self.w.dxfwire.isChecked():
-                msp.add_line((self.myCoordinates[row["from"]]["left"][0], self.myCoordinates[row["from"]]["left"][1], self.myCoordinates[row["from"]]["left"][2]), (self.myCoordinates[row["to"]]["left"][0], self.myCoordinates[row["to"]]["left"][1], self.myCoordinates[row["to"]]["left"][2]))
-                msp.add_line((self.myCoordinates[row["from"]]["right"][0], self.myCoordinates[row["from"]]["right"][1], self.myCoordinates[row["from"]]["right"][2]), (self.myCoordinates[row["to"]]["right"][0], self.myCoordinates[row["to"]]["right"][1], self.myCoordinates[row["to"]]["right"][2]))
-                msp.add_line((self.myCoordinates[row["from"]]["up"][0], self.myCoordinates[row["from"]]["up"][1], self.myCoordinates[row["from"]]["up"][2]), (self.myCoordinates[row["to"]]["up"][0], self.myCoordinates[row["to"]]["up"][1], self.myCoordinates[row["to"]]["up"][2]))
-                msp.add_line((self.myCoordinates[row["from"]]["down"][0], self.myCoordinates[row["from"]]["down"][1], self.myCoordinates[row["from"]]["down"][2]), (self.myCoordinates[row["to"]]["down"][0], self.myCoordinates[row["to"]]["down"][1], self.myCoordinates[row["to"]]["down"][2]))
+            if self.w.dxfmesh.isChecked():
+                tlX = self.myCoordinates[row["to"]]["left"][0]
+                tlY = self.myCoordinates[row["to"]]["left"][1]
+                tlZ = self.myCoordinates[row["to"]]["left"][2]
+                trX = self.myCoordinates[row["to"]]["right"][0]
+                trY = self.myCoordinates[row["to"]]["right"][1]
+                trZ = self.myCoordinates[row["to"]]["right"][2]
+                tuX = self.myCoordinates[row["to"]]["up"][0]
+                tuY = self.myCoordinates[row["to"]]["up"][1]
+                tuZ = self.myCoordinates[row["to"]]["up"][2]
+                tdX = self.myCoordinates[row["to"]]["down"][0]
+                tdY = self.myCoordinates[row["to"]]["down"][1]
+                tdZ = self.myCoordinates[row["to"]]["down"][2]
+                endofbranch = bool((tlX,tlY,tlZ)==(trX,trY,trZ) and (tuX,tuY,tuZ)==(tdX,tdY,tdZ))
+                if not endofbranch:
+                    #https://ezdxf.readthedocs.io/en/stable/tutorials/mesh.html
+                    with mesh.edit_data() as mesh_data:
+                        mesh_data.add_face([(lX,lY,lZ), (tlX,tlY,tlZ), (tuX,tuY,tuZ), (uX,uY,uZ)])
+                        mesh_data.add_face([(uX,uY,uZ), (tuX,tuY,tuZ), (trX,trY,trZ), (rX,rY,rZ)])
+                        mesh_data.add_face([(rX,rY,rZ), (trX,trY,trZ), (tdX,tdY,tdZ), (dX,dY,dZ)])
+                        mesh_data.add_face([(dX,dY,dZ), (tdX,tdY,tdZ), (tlX,tlY,tlZ), (lX,lY,lZ)])
+                        mesh_data.optimize()  # optional, minimizes vertex count
+                else:
+                    with mesh.edit_data() as mesh_data:
+                        mesh_data.add_face([(lX,lY,lZ), (tlX,tlY,tlZ), (uX,uY,uZ)])
+                        mesh_data.add_face([(uX,uY,uZ), (tuX,tuY,tuZ), (rX,rY,rZ)])
+                        mesh_data.add_face([(rX,rY,rZ), (trX,trY,trZ), (dX,dY,dZ)])
+                        mesh_data.add_face([(dX,dY,dZ), (tdX,tdY,tdZ), (lX,lY,lZ)])
+                        mesh_data.optimize()  # optional, minimizes vertex count
         cleanedname = self.cleanName(self.w.cavename.text())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
         Dfilename = cavefolder + "/" + cleanedname + ".dxf"
@@ -749,6 +774,11 @@ class MainWindow(QMainWindow):
         else:
             pcoords = {"pos":[myX,myY,myZ],"left":[myX,myY,myZ],"right":[myX,myY,myZ],"up":[myX,myY,myZ],"down":[myX,myY,myZ]}
         return pcoords
+
+    def getPointSection(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
+        print("Calculating section points")
+        scoords = []
+        return scoords
 
     def populateTable(self, CSV):
         #TODO: delete rows and columns
