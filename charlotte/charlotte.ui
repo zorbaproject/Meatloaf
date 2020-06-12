@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>624</width>
-    <height>363</height>
+    <height>421</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="misurazione">
        <attribute name="title">
@@ -363,14 +363,25 @@
             </layout>
            </item>
            <item>
-            <widget class="QCheckBox" name="openlastcave">
-             <property name="text">
-              <string>Inizia sempre dall'ultima grotta</string>
-             </property>
-             <property name="checked">
-              <bool>false</bool>
-             </property>
-            </widget>
+            <layout class="QHBoxLayout" name="horizontalLayout_13">
+             <item>
+              <widget class="QCheckBox" name="openlastcave">
+               <property name="text">
+                <string>Inizia sempre dall'ultima grotta</string>
+               </property>
+               <property name="checked">
+                <bool>false</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="dxfwire">
+               <property name="text">
+                <string>DXF wireframe</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </widget>

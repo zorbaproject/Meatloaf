@@ -588,7 +588,20 @@ class MainWindow(QMainWindow):
             dZ = self.myCoordinates[row["from"]]["down"][2]
             #https://ezdxf.readthedocs.io/en/stable/tutorials/spline.html
             fit_points = [(lX, lY, lZ), (uX, uY, uZ), (rX, rY, rZ), (dX, dY, dZ), (lX, lY, lZ)]
-            spline = msp.add_spline(fit_points) #we might have some problems opening it with blender
+            dxfspline = False
+            if dxfspline:
+                spline = msp.add_spline(fit_points) #we might have some problems opening it with blender
+            else:
+                msp.add_line((lX, lY, lZ), (uX, uY, uZ))
+                msp.add_line((uX, uY, uZ), (rX, rY, rZ))
+                msp.add_line((rX, rY, rZ), (dX, dY, dZ))
+                msp.add_line((dX, dY, dZ), (lX, lY, lZ))
+            dxfwire = True
+            if self.w.dxfwire.isChecked():
+                msp.add_line((self.myCoordinates[row["from"]]["left"][0], self.myCoordinates[row["from"]]["left"][1], self.myCoordinates[row["from"]]["left"][2]), (self.myCoordinates[row["to"]]["left"][0], self.myCoordinates[row["to"]]["left"][1], self.myCoordinates[row["to"]]["left"][2]))
+                msp.add_line((self.myCoordinates[row["from"]]["right"][0], self.myCoordinates[row["from"]]["right"][1], self.myCoordinates[row["from"]]["right"][2]), (self.myCoordinates[row["to"]]["right"][0], self.myCoordinates[row["to"]]["right"][1], self.myCoordinates[row["to"]]["right"][2]))
+                msp.add_line((self.myCoordinates[row["from"]]["up"][0], self.myCoordinates[row["from"]]["up"][1], self.myCoordinates[row["from"]]["up"][2]), (self.myCoordinates[row["to"]]["up"][0], self.myCoordinates[row["to"]]["up"][1], self.myCoordinates[row["to"]]["up"][2]))
+                msp.add_line((self.myCoordinates[row["from"]]["down"][0], self.myCoordinates[row["from"]]["down"][1], self.myCoordinates[row["from"]]["down"][2]), (self.myCoordinates[row["to"]]["down"][0], self.myCoordinates[row["to"]]["down"][1], self.myCoordinates[row["to"]]["down"][2]))
         cleanedname = self.cleanName(self.w.cavename.text())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
         Dfilename = cavefolder + "/" + cleanedname + ".dxf"
@@ -697,8 +710,6 @@ class MainWindow(QMainWindow):
             myY = fromY + (dist*(math.sin(math.radians(heading))))
             myZ = fromZ + (dist*(math.sin(math.radians(incl))))
             coord[pointname] = self.getPointWalls(pointname, frompointname, myX, myY, myZ)
-            print(coord[pointname]["up"])
-            print(coord[pointname]["down"])
         self.myCoordinates = coord
 
     def getPointWalls(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
@@ -724,14 +735,14 @@ class MainWindow(QMainWindow):
             d = rawdata["walls"]['down']
             lX = myX + (l*(math.cos(math.radians(heading+90))))
             lY = myY + (l*(math.sin(math.radians(heading+90))))
-            lZ = myZ + (l*(math.cos(math.radians(incl))))
+            lZ = myZ
             rX = myX + (r*(math.cos(math.radians(heading-90))))
             rY = myY + (r*(math.sin(math.radians(heading-90))))
-            rZ = myZ + (r*(math.cos(math.radians(incl))))
-            uX = myX + (u*(math.cos(math.radians(heading))))
+            rZ = myZ
+            uX = myX
             uY = myY + (u*(math.sin(math.radians(heading+90))))
             uZ = myZ + (u*(math.sin(math.radians(incl+90))))
-            dX = myX + (d*(math.cos(math.radians(heading))))
+            dX = myX
             dY = myY + (d*(math.sin(math.radians(heading-90))))
             dZ = myZ + (d*(math.sin(math.radians(incl-90))))
             pcoords = {"pos":[myX,myY,myZ],"left":[lX,lY,lZ],"right":[rX,rY,rZ],"up":[uX,uY,uZ],"down":[dX,dY,dZ]}
