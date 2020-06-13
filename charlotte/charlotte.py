@@ -62,6 +62,7 @@ from PySide2.QtGui import QPainterPath
 from PySide2.QtGui import QPolygonF
 from PySide2.QtGui import QPen
 from PySide2.QtGui import QColor
+from PySide2.QtGui import QTransform
 from PySide2.QtCore import QPointF
 
 toSleep = 1
@@ -494,32 +495,27 @@ class MainWindow(QMainWindow):
             Ppoligon.moveTo(QPointF(left[0][0], left[0][1]))
             Spoligon.moveTo(QPointF(up[0][0], up[0][1]))
             for p in left:
-                #c1 = Ppath.currentPosition()
-                #c2 = QPointF(p[0], p[1])
-                #Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
-                Ppoligon.lineTo(QPointF(p[0], p[1]))
+                c1 = Ppoligon.currentPosition()
+                c2 = QPointF(p[0], p[1])
+                Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
             right.reverse()
             right.append(left[0]) #close the line
             right = right[1:]
             for p in right:
-                #c1 = Ppath.currentPosition()
-                #c2 = QPointF(p[0], p[1])
-                #Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
-                Ppoligon.lineTo(QPointF(p[0], p[1]))
-            #up = up[1:]
+                c1 = Ppoligon.currentPosition()
+                c2 = QPointF(p[0], p[1])
+                Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
             for p in up:
-                #c1 = Ppath.currentPosition()
-                #c2 = QPointF(p[0], p[1])
-                #Spoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
-                Spoligon.lineTo(QPointF(p[0], p[1]))
+                c1 = Spoligon.currentPosition()
+                c2 = QPointF(p[0], p[1])
+                Spoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
             down.reverse()
             down.append(up[0]) #close the line
             down = down[1:]
             for p in down:
-                #c1 = Ppath.currentPosition()
-                #c2 = QPointF(p[0], p[1])
-                #Spoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
-                Spoligon.lineTo(QPointF(p[0], p[1]))
+                c1 = Spoligon.currentPosition()
+                c2 = QPointF(p[0], p[1])
+                Spoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
             PennaBordo = QPen(Qt.black, 1, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin) #Qt.Dashline https://doc.qt.io/qtforpython/PySide2/QtGui/QPen.html
             pianta.addPath(Ppoligon, PennaBordo)
             spaccato.addPath(Spoligon, PennaBordo)
@@ -546,6 +542,9 @@ class MainWindow(QMainWindow):
         generator.setTitle(title);
         generator.setDescription("Created with Charlotte Cave Surveing Software");
         painter = QPainter( generator )
+        transform = QTransform().scale(1, -1) #we need a qtransform because in a qgraphicscene y-axis is flipped
+        transform.translate(0, -scene.height())
+        painter.setTransform(transform)
         scene.render( painter )
         painter.end()
 
