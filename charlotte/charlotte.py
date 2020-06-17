@@ -130,6 +130,7 @@ class getData(QThread):
         self.mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(self.i2c)
         self.accel = adafruit_lsm303_accel.LSM303_Accel(self.i2c)
         self.rangefinderTTY = self.searchRangefinder(['/dev/ttyUSB0','/dev/ttyUSB1'])
+        print("Rangefinder: " + str(self.rangefinderTTY))
         try:
             self.tempsensor = w1thermsensor.W1ThermSensor()
         except:
@@ -171,10 +172,10 @@ class getData(QThread):
             with serial.Serial(self.rangefinderTTY, self.RFbaudrate, timeout=1) as ser:
                 ser.write(self.ledoffcommand)
                 line = ser.readline().decode('ascii')   # read a '\n' terminated line
-                print(line)
+                #print(line)
         except:
             sleep(0.5)
-        sleep(0.5)
+        #sleep(0.5)
         return None
 
     def searchRangefinder(self, ttys = ['/dev/ttyUSB0']):
@@ -198,7 +199,7 @@ class getData(QThread):
         while lookfordistance:
             try:
                 with serial.Serial(self.rangefinderTTY, self.RFbaudrate, timeout=1) as ser:
-                    if ledoncode in line:
+                    if self.ledoncode in line:
                         ser.write(self.distancecommand)
                     else:
                         ser.write(self.ledoncommand)
@@ -206,7 +207,7 @@ class getData(QThread):
                     #print(line)
                     if self.distancecode in line:
                         dist = float(re.sub("[^0-9]([0-9\.]*)","\g<1>",line.split(self.distancecode)[0]))
-                        print("Distance: "+str(dist))
+                        #print("Distance: "+str(dist))
                         lookfordistance = False
             except:
                 sleep(0.1)
