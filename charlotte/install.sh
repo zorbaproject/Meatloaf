@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "This install script is intended for a RaspberryPi 3"
+
 sudo apt-get update
 sudo apt install aptitude
 
@@ -18,7 +20,12 @@ sudo apt install libpyside2-dev pyside2-tools
 sudo apt install python3-pyside2*
 #Minimalistic option: sudo apt install python3-pyside2.qtgui python3-pyside2.qtcore python3-pyside2.qtconcurrent
 
+#export in Autocad DXF format
 sudo pip3 install ezdxf
+
+#access serial ports (e.g.: /dev/ttyUSB0) as non root
+sudo pip3 install pyserial
+sudo usermod -a -G dialout $(whoami)
 
 wget https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/adafruit-pitft.sh
 chmod +x adafruit-pitft.sh

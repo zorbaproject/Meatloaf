@@ -21,6 +21,7 @@ try:
     import busio
     import adafruit_lsm303_accel
     import adafruit_lsm303dlh_mag
+    import serial
     isRPI = True
 except:
     isRPI = False
@@ -116,14 +117,23 @@ class getData(QThread):
         self.setTerminationEnabled(True)
         if not isRPI:
             self.exit()
+        #Data for the rangefinder
+        self.rangefinderTTY = '/dev/ttyUSB0'
+        self.RFbaudrate = 19200
+        self.ledoffcommand = b'C'
+        self.ledoncommand = b'O'
+        self.distancecommand = b'D'
+        self.ledoncode = "OK!"  #This is the response to look for after turning on led
+        self.distancecode = "m," #This is the response to look for after requesting a distance measurement
         #Cerco i sensori
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(self.i2c)
         self.accel = adafruit_lsm303_accel.LSM303_Accel(self.i2c)
+        self.rangefinderTTY = self.searchRangefinder(['/dev/ttyUSB0','/dev/ttyUSB1'])
         try:
-            self.sensor = w1thermsensor.W1ThermSensor()
+            self.tempsensor = w1thermsensor.W1ThermSensor()
         except:
-            self.sensor = None
+            self.tempsensor = None
 
     def __del__(self):
         print("Shutting down thread")
@@ -132,6 +142,7 @@ class getData(QThread):
         global toSleep
         while True:
             if self.myparent.w.manualMode.isChecked():
+                self.stopRangefinder()
                 sleep(toSleep)
                 continue
             self.requiredData = {}
@@ -144,15 +155,62 @@ class getData(QThread):
             self.requiredData["sideTilt"] = self.get_x_rotation(accel_x,accel_y,accel_z)
             self.requiredData["frontalInclination"] = self.get_y_rotation(accel_x,accel_y,accel_z)
             self.requiredData["heading"] = self.get_heading(mag_x,mag_y,mag_z)
-            self.requiredData["distance"] = 0.0
+            self.requiredData["distance"] = self.getDistance()
             self.myparent.setRequiredData(self.requiredData)
             sleep(toSleep)
         return
     
     def readTemp(self):
         #Leggo la temperatura
-        temperature_in_celsius = self.sensor.get_temperature()
+        temperature_in_celsius = self.tempsensor.get_temperature()
         return temperature_in_celsius
+
+    def stopRangefinder(self):
+        line = ""
+        try:
+            with serial.Serial(self.rangefinderTTY, self.RFbaudrate, timeout=1) as ser:
+                ser.write(self.ledoffcommand)
+                line = ser.readline().decode('ascii')   # read a '\n' terminated line
+                print(line)
+        except:
+            sleep(0.5)
+        sleep(0.5)
+        return None
+
+    def searchRangefinder(self, ttys = ['/dev/ttyUSB0']):
+        line = ""
+        for mytty in ttys:
+            try:
+                with serial.Serial(mytty, self.RFbaudrate, timeout=1) as ser:
+                    ser.write(self.ledoncommand)
+                    line = ser.readline().decode('ascii')   # read a '\n' terminated line
+                    if self.ledoncode in line:
+                        return mytty
+            except:
+                sleep(0.5)
+            sleep(0.5)
+        return None
+
+    def getDistance(self):
+        line = ""
+        dist = 0.0
+        lookfordistance = True
+        while lookfordistance:
+            try:
+                with serial.Serial(self.rangefinderTTY, self.RFbaudrate, timeout=1) as ser:
+                    if ledoncode in line:
+                        ser.write(self.distancecommand)
+                    else:
+                        ser.write(self.ledoncommand)
+                    line = ser.readline().decode('ascii')   # read a '\n' terminated line
+                    #print(line)
+                    if self.distancecode in line:
+                        dist = float(re.sub("[^0-9]([0-9\.]*)","\g<1>",line.split(self.distancecode)[0]))
+                        print("Distance: "+str(dist))
+                        lookfordistance = False
+            except:
+                sleep(0.1)
+        return dist
 
     def dist(self, a,b):
         return math.sqrt((a*a)+(b*b))
