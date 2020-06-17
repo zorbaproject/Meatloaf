@@ -215,6 +215,8 @@ class MainWindow(QMainWindow):
             self.getDataThread = getData(self)
             self.getDataThread.start()
 
+    #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
+
     def chiudi(self):
         sys.exit(0)
 
@@ -376,6 +378,7 @@ class MainWindow(QMainWindow):
             os.mkdir(cavefolder)
         Cfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".json"
         Tfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".csv"
+        Xfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".csx"
         print("Saving to " + Cfilename)
 
         temp = self.w.temperature.value()
@@ -423,6 +426,12 @@ class MainWindow(QMainWindow):
         text_file.close()
         self.populateTable(tfiletxt)
 
+        #now we build the cSurvey CSX file
+        xfiletxt = self.json2CSX(Cfile)
+        text_file = open(Xfilename, "w", encoding='utf-8')
+        text_file.write(xfiletxt)
+        text_file.close()
+
         #we draw the result
         self.updatedrawing()
 
@@ -451,6 +460,40 @@ class MainWindow(QMainWindow):
 
             csvtxt = csvtxt[0:-1] + "\n"
         return csvtxt
+
+    def json2CSX(self, Cfile):
+        cavename = self.w.cavename.text()
+        now = datetime.now()
+        mydate = now.strftime("%d-%m-%Y")
+        #header
+        csxtxt = "<csurvey version=\"1.11\" id=\"\"> \n<!-- "+mydate+" created by Charlotte --> \n  <properties id=\"\" name=\"\" origin=\"0\" creatid=\"TopoDroid\" creatversion=\"5.0.3h\" creatdate=\""+now.strftime("%Y-%m-%d")+"\" calculatemode=\"1\" calculatetype=\"2\" calculateversion=\"-1\" ringcorrectionmode=\"2\" nordcorrectionmode=\"0\" inversionmode=\"1\" designwarpingmode=\"1\" bindcrosssection=\"1\"> \n    <sessions> \n      <session date=\""+now.strftime("%Y.%m.%d")+"\" description=\""+cavename+"\" nordtype=\"0\" manualdeclination=\"0\" > \n      </session> \n    </sessions>"
+        #caveinfo
+        csxtxt = csxtxt + "<caveinfos> \n      <caveinfo name=\""+cavename.upper()+"\" > \n        <branches> \n          <branch name=\"\"> \n          </branch> \n        </branches> \n      </caveinfo> \n    </caveinfos> \n    <gps enabled=\"0\" refpointonorigin=\"0\" geo=\"WGS84\" format=\"\" sendtotherion=\"0\" /> \n  </properties>"
+        csxtxt = csxtxt + "\n<segments>"
+
+        i = 0
+        s = 5
+        for row in Cfile["measurements"]:
+            mydate = str(row["timestamp"].split(" ")[0]).replace("/", "")
+
+            #csvtxt = csvtxt + str(row["topographic"]['sideTilt']) + ","
+
+            csxtxt = csxtxt + "<segment id=\"\" cave=\""+cavename.upper()+"\" branch=\"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["from"]) +"("+str(i)+")\" cut=\"1\" splay=\"1\" exclude=\"1\" distance=\"1.00\" bearing=\"293.0\" inclination=\"0.0\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\"0\" r=\"0\" u=\"0\" d=\"0\" distox=\"\" >\n    </segment>"
+            i = i + 1
+            csxtxt = csxtxt + "<segment id=\"\" cave=\""+cavename.upper()+"\" branch=\"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["from"]) +"("+str(i)+")\" cut=\"1\" splay=\"1\" exclude=\"1\" distance=\"2.00\" bearing=\"113.0\" inclination=\"0.0\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\"0\" r=\"0\" u=\"0\" d=\"0\" distox=\"\" >\n    </segment>"
+            i = i + 1
+            csxtxt = csxtxt + "<segment id=\"\" cave=\""+cavename.upper()+"\" branch=\"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["from"]) +"("+str(i)+")\" cut=\"1\" splay=\"1\" exclude=\"1\" direction=\"2\" distance=\"3.00\" bearing=\"0.0\" inclination=\"90.0\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\"0\" r=\"0\" u=\"0\" d=\"0\" distox=\"\" >\n    </segment>"
+            i = i + 1
+            csxtxt = csxtxt + "<segment id=\"\" cave=\""+cavename.upper()+"\" branch=\"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["from"]) +"("+str(i)+")\" cut=\"1\" splay=\"1\" exclude=\"1\" direction=\"2\" distance=\"1.00\" bearing=\"0.0\" inclination=\"-90.0\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\"0\" r=\"0\" u=\"0\" d=\"0\" distox=\"\" >\n    </segment>"
+            i = i + 1
+            csxtxt = csxtxt + "<segment id=\""+str(s)+"\" cave=\""+cavename.upper()+"\" branch=\"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["to"]) +"\" distance=\""+ str(row["topographic"]['distance']) +"\" bearing=\""+ str(row["topographic"]['heading']) +"\" inclination=\""+ str(row["topographic"]['frontalInclination']) +"\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\""+ str(row["walls"]['left']) +"\" r=\""+ str(row["walls"]['right']) +"\" u=\""+ str(row["walls"]['up']) +"\" d=\""+ str(row["walls"]['down']) +"\" distox=\"\" >\n    </segment>"
+            s = s + 5
+
+        #end segments
+        csxtxt= csxtxt + "</segments>"
+        #footer
+        csxtxt= csxtxt + "<trigpoints> \n  </trigpoints> \n  <plan> \n    <layers> \n      <layer name=\"Base\" type=\"0\"> \n         <items /> \n      </layer> \n      <layer name=\"Soil\" type=\"1\"> \n        <items /> \n      </layer> \n      <layer name=\"Water and floor morphologies\" type=\"2\"> \n        <items /> \n      </layer> \n      <layer name=\"Rocks and concretions\" type=\"3\"> \n        <items /> \n      </layer> \n      <layer name=\"Ceiling morphologies\" type=\"4\"> \n        <items /> \n      </layer> \n      <layer name=\"Borders\" type=\"5\"> \n        <items> \n        </items> \n      </layer> \n      <layer name=\"Signs\" type=\"6\"> \n        <items /> \n      </layer> \n    </layers> \n    <plot /> \n  </plan> \n  <profile> \n    <layers> \n      <layer name=\"Base\" type=\"0\"> \n         <items /> \n      </layer> \n      <layer name=\"Soil\" type=\"1\"> \n        <items /> \n      </layer> \n      <layer name=\"Water and floor morphologies\" type=\"2\"> \n        <items /> \n      </layer> \n      <layer name=\"Rocks and concretions\" type=\"3\"> \n        <items /> \n      </layer> \n      <layer name=\"Ceiling morphologies\" type=\"4\"> \n        <items /> \n      </layer> \n      <layer name=\"Borders\" type=\"5\"> \n        <items> \n        </items> \n      </layer> \n      <layer name=\"Signs\" type=\"6\"> \n        <items /> \n      </layer> \n    </layers> \n    <plot /> \n  </profile> \n</csurvey>"
+        return csxtxt
 
     def Json2Svg(self, Cfile):
         print("Drawing SVG")
@@ -636,6 +679,8 @@ class MainWindow(QMainWindow):
         self.getBranches(self.myCaveFile)
         self.Json2Svg(self.myCaveFile)
         self.Json2Dxf(self.myCaveFile)
+        #xfiletxt = self.json2CSX(self.myCaveFile)
+        #print(xfiletxt)
 
     def getFromPointData(self, Cfile, pointname):
         point = {}
