@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys, os
+import time
 from time import sleep
 import json
 import math
@@ -11,17 +12,17 @@ from datetime import datetime
 import ezdxf
 
 try:
+    import serial
+    import PyLidar3
     #Devono essere abilitati i 1-Wire
     os.system('sudo modprobe w1-gpio')
     os.system('sudo modprobe w1-therm')
-
     import RPi.GPIO as GPIO
     import w1thermsensor
     import board
     import busio
     import adafruit_lsm303_accel
     import adafruit_lsm303dlh_mag
-    import serial
     isRPI = True
 except:
     isRPI = False
@@ -70,44 +71,72 @@ toSleep = 1
 samples = 5 #number of samples to take for calculating average
 
 class getLidar(QThread):
-    TempReached = Signal(bool)
+    global isRPI
+    GotScan = Signal(list)
 
-    def __init__(self, w, addr = ""):
+    def __init__(self, parent):
         QThread.__init__(self)
-        self.w = w
+        self.myparent = parent
         self.setTerminationEnabled(True)
-        self.relaypin = 23
         if not isRPI:
             self.exit()
-        # Numerazione dei PIN GPIO
-        GPIO.setmode(GPIO.BCM)
-        # Il pin del relay va in output
+        # We just keep this in case we need to drive a servo
+        #GPIO.setmode(GPIO.BCM)
         #GPIO.setup(self.relaypin, GPIO.OUT)
-        #Cerco il sensore
-        #self.sensor = w1thermsensor.W1ThermSensor()
+        self.scantime = 2
+        self.lidarport = self.findYDLidarX4(["/dev/ttyUSB0", "/dev/ttyUSB1"])
+        print("Found Lidar on " + str(self.lidarport))
 
     def __del__(self):
         print("Shutting down thread")
 
     def run(self):
-        self.reachTemp()
+        global toSleep
+        while True:
+            if self.myparent.w.manualMode.isChecked() or self.lidarport == None:
+                #self.stopRangefinder()
+                sleep(toSleep)
+                continue
+            myscan = self.scanYDLidarX4()
+            #self.myparent.LidarScanDone(myscan)
+            self.GotScan.emit(myscan)
+            sleep(1)
+            #self.drawSection()
         return
 
-    def reachTemp(self):
-        global toSleep
+    def findYDLidarX4(self, ttys = ["/dev/ttyUSB0", "/dev/ttyUSB1"]):
         try:
-            while self.w.save.isChecked():
-                if float(self.readTemp()) < float(self.w.tempImpostata.value()):
-                    # Accendo il relay
-                    GPIO.output(self.relaypin, GPIO.HIGH)
-                    sleep(toSleep) 
-                else:
-                    # Spengo il relay
-                    GPIO.output(self.relaypin, GPIO.LOW)
-                    self.TempReached.emit(True)
+            for tmptty in ttys:
+                Obj = PyLidar3.YdLidarX4(tmptty) #PyLidar3.your_version_of_lidar(port,chunk_size)
+                if(Obj.Connect()):
+                    print(Obj.GetDeviceInfo())
+                    Obj.Disconnect()
+                    return tmptty
+            t = 0/0
         except:
-            self.TempReached.emit(False)
+            return None
 
+    def scanYDLidarX4(self):
+        myscan = [0.0 for deg in range(360)] #we have one value for every angle
+        Obj = PyLidar3.YdLidarX4(self.lidarport)
+        if(Obj.Connect()):
+            gen = Obj.StartScanning()
+            t = time.time() # start time
+            scanlist = []
+            while (time.time() - t) < self.scantime:
+                scanlist.append(next(gen))
+                time.sleep(0.5)
+            Obj.StopScanning()
+            Obj.Disconnect()
+            for i in range(360):
+                sum = 0.0
+                for tmpscan in scanlist:
+                    sum = sum +tmpscan[i]
+                myscan[i] = (float(sum)/len(scanlist))/1000.0
+            #print(len(scanlist))
+        else:
+            print("Error connecting to device")
+        return myscan
 
 class getData(QThread):
     #######################################Here we read temperature, pressure, distance, and 3-axis position
@@ -255,7 +284,7 @@ class MainWindow(QMainWindow):
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
         self.w.cavename.textChanged.connect(self.cavenamechanged)
         self.requiredData = {}
-        self.section = []
+        self.section = [0.0 for deg in range(360)]  #we expect to get one value for every degree
         self.walls = {}
         self.mycfgfile = QDir.homePath() + "/.charlottecfg"
         self.myCaveFile = {}
@@ -266,6 +295,8 @@ class MainWindow(QMainWindow):
         #Take note that Y axis on a graphicsview is flipped
         self.w.pianta.scale(1,-1)
         self.w.spaccato.scale(1,-1)
+        self.w.section.scale(1,-1)
+        self.w.section.scale(20,20)
         self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down"]
         self.loadPersonalCFG()
         if os.path.isfile(self.mycfg['lastcave']) and self.mycfg['startfromlastcave']=='True':
@@ -273,6 +304,7 @@ class MainWindow(QMainWindow):
         if isRPI:
             self.getDataThread = getData(self)
             self.getDataThread.start()
+        self.startLidarScan()
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
 
@@ -376,28 +408,56 @@ class MainWindow(QMainWindow):
             self.requiredData["temperature"] = 0.0
             #print("Error reading temperature")
 
-    def doLidarScan(self):
-        output = []
-        if isRPI and not self.w.manualMode.isChecked():
-            #self.myThread = TurnOn(self.w)
-            #self.myThread.TempReached.connect(self.reached)
-            #self.myThread.finished.connect(self.itIsOff)
-            #self.myThread.start()
-            #self.alreadyOn = True
-            print("Reading data from lidar scanner")
-        if len(output) < 360:
-            output = [0.0 for deg in range(360)]  #we expect to get one value for every degree
-        else:
-            self.calculateWalls(output)
-        self.section = output
-        #print(output)
-        #self.calculateWalls(output)
+    def startLidarScan(self):
+        #if isRPI:
+        if True:
+            self.LidarThread = getLidar(self)
+            self.LidarThread.GotScan.connect(self.LidarScanDone)
+            #self.LidarThread.finished.connect(self.itIsOff)
+            self.LidarThread.start()
 
-    def calculateWalls(self, section):
-        leftWall = self.averageListRange(section, 45,135)
-        upWall = self.averageListRange(section, 135,225)
-        rightWall = self.averageListRange(section, 225,315)
-        downWall = (self.averageListRange(section, 315,360)+self.averageListRange(section, 0,45))/2
+    def LidarScanDone(self, output):
+        if len(output) < 360:
+            self.section = [0.0 for deg in range(360)]  #we expect to get one value for every degree
+        else:
+            self.section = output
+            self.calculateWalls(self.section)
+            self.drawSection()
+
+    def calculateSectionCoord(self, section, myY = 0.0, heading = 0.0, incl = 0.0, sidetilt = 0.0):
+        if len(section) <360:
+            return None
+        coords = []
+        for angle in range(360):
+            tmpangle = 360-(angle+sidetilt)
+            d = section[angle]
+            x = -d*math.cos(math.radians(tmpangle))
+            y = myY
+            z = d*math.sin(math.radians(tmpangle))
+            #rotate by heading
+            if heading != 0.0:
+                hCorr = 90.0
+                xold = -x
+                yold = y
+                x = (xold*(math.cos(math.radians(heading+hCorr)))) - (yold*(math.sin(math.radians(heading+hCorr))))
+                y = (xold*(math.sin(math.radians(heading+hCorr)))) + (yold*(math.cos(math.radians(heading+hCorr))))
+            #rotate by incl
+            if incl != 0.0:
+                iCorr = 0.0
+                yold = y
+                zold = z
+                y = (yold*(math.cos(math.radians(incl+iCorr)))) - (zold*(math.sin(math.radians(incl+iCorr))))
+                z = (yold*(math.sin(math.radians(incl+iCorr)))) + (zold*(math.cos(math.radians(incl+iCorr))))
+            coords.append([x,y,z])
+        return coords
+
+    def calculateWalls(self, section, sideTilt = 0):
+        #+int(sideTilt)
+        leftWall = (self.averageListRange(section, 315,360)+self.averageListRange(section, 0,45))/2
+        downWall = self.averageListRange(section, 45,135)
+        rightWall = self.averageListRange(section, 135,225)
+        upWall = self.averageListRange(section, 225,315)
+
         self.walls = {'left':leftWall, 'right':rightWall, 'up':upWall, 'down':downWall}
         self.w.leftW.setValue(leftWall)
         self.w.rightW.setValue(rightWall)
@@ -414,7 +474,7 @@ class MainWindow(QMainWindow):
         sum = 0
         for el in range(myfrom, myto):
             try:
-                sum = sum + float(el)
+                sum = sum + float(mylist[el])
             except:
                 continue
         average = sum/(myto-myfrom)
@@ -637,6 +697,41 @@ class MainWindow(QMainWindow):
         self.saveSvg(pianta, Pfilename, "Pianta")
         self.saveSvg(spaccato, Sfilename, "Spaccato")
 
+    def drawSection(self, mysection = None, mysideTilt = None):
+        if mysection == None:
+            section = self.section
+        else:
+            section = mysection
+        if mysideTilt == None:
+            try:
+                sideTilt = self.requiredData["sideTilt"]
+            except:
+                sideTilt = 0
+        else:
+            sideTilt = mysideTilt
+        #print(mysection)
+        secCoords = self.calculateSectionCoord(section, 0.0, 0.0, 0.0, sideTilt)
+        if len(secCoords) <360:
+            return
+        sezione = QGraphicsScene()
+        PennaBordo = QPen(Qt.black, 0.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin) #Qt.Dashline https://doc.qt.io/qtforpython/PySide2/QtGui/QPen.html
+        Spoligon = QPainterPath()
+        Spoligon.moveTo(QPointF(secCoords[0][0], secCoords[0][2]))
+        for angle in range(1,len(secCoords)):
+            c1 = Spoligon.currentPosition()
+            c2 = QPointF(secCoords[angle][0], secCoords[angle][2])
+            Spoligon.cubicTo(c1, c2, QPointF(secCoords[angle][0], secCoords[angle][2]))
+        c1 = Spoligon.currentPosition()
+        c2 = QPointF(secCoords[0][0], secCoords[0][2])
+        Spoligon.cubicTo(c1, c2, QPointF(secCoords[0][0], secCoords[0][2]))
+        sezione.addPath(Spoligon, PennaBordo)
+        if mysection == None:
+            self.w.section.setScene(sezione)
+            self.w.section.show()
+            #QApplication.processEvents()
+        else:
+            return sezione
+
     def saveSvg(self, scene, fileName, title = ""):
         generator = QSvgGenerator()
         generator.setFileName( fileName )
@@ -694,11 +789,26 @@ class MainWindow(QMainWindow):
                 fit_points = [(lX, lY, lZ), (uX, uY, uZ), (rX, rY, rZ), (dX, dY, dZ), (lX, lY, lZ)]
                 spline = msp.add_spline(fit_points)
             else:
-                #we should check if a section is available. if not, just use walls points
-                msp.add_line((lX, lY, lZ), (uX, uY, uZ))
-                msp.add_line((uX, uY, uZ), (rX, rY, rZ))
-                msp.add_line((rX, rY, rZ), (dX, dY, dZ))
-                msp.add_line((dX, dY, dZ), (lX, lY, lZ))
+                if self.isValidSection(row["section"]):
+                    secCoords = self.calculateSectionCoord(row["section"], fromY, row["topographic"]["heading"], row["topographic"]["frontalInclination"], row["topographic"]["sideTilt"])
+                    for secP in range(len(secCoords)):
+                        sFx = secCoords[secP][0]
+                        sFy = secCoords[secP][1]
+                        sFz = secCoords[secP][2]
+                        if secP == (len(secCoords)-1):
+                            sTx = secCoords[0][0]
+                            sTy = secCoords[0][1]
+                            sTz = secCoords[0][2]
+                        else:
+                            sTx = secCoords[secP+1][0]
+                            sTy = secCoords[secP+1][1]
+                            sTz = secCoords[secP+1][2]
+                        msp.add_line((sFx, sFy, sFz), (sTx, sTy, sTz))
+                else:
+                    msp.add_line((lX, lY, lZ), (uX, uY, uZ))
+                    msp.add_line((uX, uY, uZ), (rX, rY, rZ))
+                    msp.add_line((rX, rY, rZ), (dX, dY, dZ))
+                    msp.add_line((dX, dY, dZ), (lX, lY, lZ))
             if self.w.dxfmesh.isChecked():
                 tlX = self.myCoordinates[row["to"]]["left"][0]
                 tlY = self.myCoordinates[row["to"]]["left"][1]
@@ -732,6 +842,12 @@ class MainWindow(QMainWindow):
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
         Dfilename = cavefolder + "/" + cleanedname + ".dxf"
         doc.saveas(Dfilename)
+
+    def isValidSection(self, section):
+        for dist in section:
+            if dist != 0.0:
+                return True
+        return False
 
     def updatedrawing(self):
         self.getCoordinates(self.myCaveFile)
@@ -878,10 +994,10 @@ class MainWindow(QMainWindow):
             pcoords = {"pos":[myX,myY,myZ],"left":[myX,myY,myZ],"right":[myX,myY,myZ],"up":[myX,myY,myZ],"down":[myX,myY,myZ]}
         return pcoords
 
-    def getPointSection(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
-        print("Calculating section points")
-        scoords = []
-        return scoords
+    #def getPointSection(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
+    #    print("Calculating section points")
+    #    scoords = []
+    #    return scoords
 
     def populateTable(self, CSV):
         #TODO: delete rows and columns
