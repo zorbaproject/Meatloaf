@@ -421,7 +421,11 @@ class MainWindow(QMainWindow):
             self.section = [0.0 for deg in range(360)]  #we expect to get one value for every degree
         else:
             self.section = output
-            self.calculateWalls(self.section)
+            try:
+                sideTilt = self.requiredData["sideTilt"]
+            except:
+                sideTilt = 0
+            self.calculateWalls(self.section, sideTilt)
             self.drawSection()
 
     def calculateSectionCoord(self, section, myY = 0.0, heading = 0.0, incl = 0.0, sidetilt = 0.0):
@@ -429,7 +433,7 @@ class MainWindow(QMainWindow):
             return None
         coords = []
         for angle in range(360):
-            tmpangle = 360-(angle+sidetilt)
+            tmpangle = 360-(angle-sidetilt)
             d = section[angle]
             x = -d*math.cos(math.radians(tmpangle))
             y = myY
@@ -453,10 +457,10 @@ class MainWindow(QMainWindow):
 
     def calculateWalls(self, section, sideTilt = 0):
         #+int(sideTilt)
-        leftWall = (self.averageListRange(section, 315,360)+self.averageListRange(section, 0,45))/2
-        downWall = self.averageListRange(section, 45,135)
-        rightWall = self.averageListRange(section, 135,225)
-        upWall = self.averageListRange(section, 225,315)
+        leftWall = (self.averageListRange(section, 315+int(-sideTilt),360+int(-sideTilt))+self.averageListRange(section, 0+int(-sideTilt),45+int(-sideTilt)))/2
+        downWall = self.averageListRange(section, 45+int(-sideTilt),135+int(-sideTilt))
+        rightWall = self.averageListRange(section, 135+int(-sideTilt),225+int(-sideTilt))
+        upWall = self.averageListRange(section, 225+int(-sideTilt),315+int(-sideTilt))
 
         self.walls = {'left':leftWall, 'right':rightWall, 'up':upWall, 'down':downWall}
         self.w.leftW.setValue(leftWall)
@@ -467,10 +471,8 @@ class MainWindow(QMainWindow):
     def averageListRange(self, mylist, myfrom = 0, myto = None):
         if myto == None:
             myto = len(mylist)
-        if myfrom >= len(mylist):
-            myfrom = len(mylist)-1
-        if myto > len(mylist):
-            myto = len(mylist)
+        myfrom = myfrom%(len(mylist)+1)
+        myto = myto%(len(mylist)+1)
         sum = 0
         for el in range(myfrom, myto):
             try:
@@ -1075,7 +1077,6 @@ class MainWindow(QMainWindow):
     def SaveSurvey(self):
         if self.w.save.isChecked():
             self.w.save.setText("Sto salvando...")
-            self.doLidarScan()
             self.saveFile()
             self.w.save.setChecked(False)
             self.w.save.setText("Salva misurazione")

@@ -47,5 +47,6 @@ def scanYDLidarX4():
 
 lidarport = findYDLidarX4(["/dev/ttyUSB0", "/dev/ttyUSB1"])
 print("Found Lidar on " + lidarport)
-myscan = scanYDLidarX4()
-print(myscan)
+if lidarport != None:
+    myscan = scanYDLidarX4()
+    print(myscan)
