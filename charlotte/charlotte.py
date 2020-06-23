@@ -155,9 +155,15 @@ class getData(QThread):
         self.ledoncode = "OK!"  #This is the response to look for after turning on led
         self.distancecode = "m," #This is the response to look for after requesting a distance measurement
         #Cerco i sensori
-        self.i2c = busio.I2C(board.SCL, board.SDA)
-        self.mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(self.i2c)
-        self.accel = adafruit_lsm303_accel.LSM303_Accel(self.i2c)
+        try:
+            self.i2c = busio.I2C(board.SCL, board.SDA)
+            self.mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(self.i2c)
+            self.accel = adafruit_lsm303_accel.LSM303_Accel(self.i2c)
+        except:
+            print("Unable to find LSM303DLH compass and inclinometer.")
+            self.i2c = None
+            self.mag = None
+            self.accel = None
         self.rangefinderTTY = self.searchRangefinder(['/dev/ttyUSB0','/dev/ttyUSB1'])
         print("Rangefinder: " + str(self.rangefinderTTY))
         try:
@@ -180,12 +186,20 @@ class getData(QThread):
                 self.requiredData["temperature"] = self.readTemp()
             except:
                 self.requiredData["temperature"] = -127
-            mag_x, mag_y, mag_z = self.mag.magnetic
-            accel_x,accel_y,accel_z = self.accel.acceleration
-            self.requiredData["sideTilt"] = self.get_x_rotation(accel_x,accel_y,accel_z)
-            self.requiredData["frontalInclination"] = self.get_y_rotation(accel_x,accel_y,accel_z)
-            self.requiredData["heading"] = self.get_heading(mag_x,mag_y,mag_z)
-            self.requiredData["distance"] = self.getDistance()
+            try:
+                mag_x, mag_y, mag_z = self.mag.magnetic
+                accel_x,accel_y,accel_z = self.accel.acceleration
+                self.requiredData["sideTilt"] = self.get_x_rotation(accel_x,accel_y,accel_z)
+                self.requiredData["frontalInclination"] = self.get_y_rotation(accel_x,accel_y,accel_z)
+                self.requiredData["heading"] = self.get_heading(mag_x,mag_y,mag_z)
+            except:
+                self.requiredData["sideTilt"] = 0.0
+                self.requiredData["frontalInclination"] = 0.0
+                self.requiredData["heading"] = 0.0
+            try:
+                self.requiredData["distance"] = self.getDistance()
+            except:
+                self.requiredData["distance"] = 0.0
             self.myparent.setRequiredData(self.requiredData)
             sleep(toSleep)
         return
