@@ -8,6 +8,7 @@ import json
 import math
 import re
 from datetime import datetime
+import numpy as np
 
 import ezdxf
 
@@ -442,30 +443,70 @@ class MainWindow(QMainWindow):
             self.calculateWalls(self.section, sideTilt)
             self.drawSection()
 
-    def calculateSectionCoord(self, section, myY = 0.0, heading = 0.0, incl = 0.0, sidetilt = 0.0):
+    def calculateSectionCoord(self, section, myCenter = [0.0, 0.0, 0.0], heading = 0.0, incl = 0.0, sidetilt = 0.0):
         if len(section) <360:
             return None
         coords = []
         for angle in range(360):
             tmpangle = 360-(angle-sidetilt)
             d = section[angle]
-            x = -d*math.cos(math.radians(tmpangle))
-            y = myY
+            x = - d*math.cos(math.radians(tmpangle))
+            y = 0
             z = d*math.sin(math.radians(tmpangle))
+
+            #This code seems to be slower than numpy
             #rotate by heading
-            if heading != 0.0:
-                hCorr = 90.0
-                xold = -x
-                yold = y
-                x = (xold*(math.cos(math.radians(heading+hCorr)))) - (yold*(math.sin(math.radians(heading+hCorr))))
-                y = (xold*(math.sin(math.radians(heading+hCorr)))) + (yold*(math.cos(math.radians(heading+hCorr))))
+            #hCorr = 90
+            #xold = -x
+            #yold = y
+            #x = (xold*(math.cos(math.radians(heading+hCorr)))) - (yold*(math.sin(math.radians(heading+hCorr))))
+            #y = (xold*(math.sin(math.radians(heading+hCorr)))) + (yold*(math.cos(math.radians(heading+hCorr))))
             #rotate by incl
-            if incl != 0.0:
-                iCorr = 0.0
-                yold = y
-                zold = z
-                y = (yold*(math.cos(math.radians(incl+iCorr)))) - (zold*(math.sin(math.radians(incl+iCorr))))
-                z = (yold*(math.sin(math.radians(incl+iCorr)))) + (zold*(math.cos(math.radians(incl+iCorr))))
+            #iCorr = 0.0
+            #yold = y
+            #zold = z
+            #y = (yold*(math.cos(math.radians(incl+iCorr)))) - (zold*(math.sin(math.radians(incl+iCorr))))
+            #z = (yold*(math.sin(math.radians(incl+iCorr)))) + (zold*(math.cos(math.radians(incl+iCorr))))
+
+            #Rotate by heading
+            hCorr = 90 #section should be perpendicular to the heading
+            theta = np.radians(heading+hCorr)
+            #rotation matrix
+            r = np.array((
+             (np.cos(theta),-np.sin(theta), 0),
+             (np.sin(theta),np.cos(theta), 0),
+             (0,0,1)
+            ))
+            #Vector X,Y,Z
+            v = np.array((x,y,z))
+            #dot product matrix*vector
+            newCoords = r.dot(v)
+            x = newCoords[0]
+            y = newCoords[1]
+            z = newCoords[2]
+
+            #Rotate by inclination
+            theta = np.radians(incl)
+            #rotation matrix
+            r = np.array((
+             (1,0,0),
+             (0,np.cos(theta),-np.sin(theta)),
+             (0,np.sin(theta),np.cos(theta))
+            ))
+            #Vector X,Y,Z
+            v = np.array((x,y,z))
+            #apply the rotation matrix r to v: r*v
+            newCoords = r.dot(v)
+            x = newCoords[0]
+            y = newCoords[1]
+            z = newCoords[2]
+
+            #Translate by center
+            x = x + myCenter[0]
+            y = y + myCenter[1]
+            z = z + myCenter[2]
+
+            #add values to coords list
             coords.append([x,y,z])
         return coords
 
@@ -726,7 +767,8 @@ class MainWindow(QMainWindow):
         else:
             sideTilt = mysideTilt
         #print(mysection)
-        secCoords = self.calculateSectionCoord(section, 0.0, 0.0, 0.0, sideTilt)
+        myCenter = [0.0, 0.0, 0.0]
+        secCoords = self.calculateSectionCoord(section, myCenter, 0.0, 0.0, sideTilt)
         if len(secCoords) <360:
             return
         sezione = QGraphicsScene()
@@ -787,77 +829,121 @@ class MainWindow(QMainWindow):
             thickness = 0
             #https://ezdxf.readthedocs.io/en/stable/layouts/layouts.html#ezdxf.layouts.BaseLayout.add_line
             msp.add_line((fromX, fromY, fromZ), (toX, toY, toZ))  # add a LINE entity
-            lX = self.myCoordinates[row["from"]]["left"][0]
-            lY = self.myCoordinates[row["from"]]["left"][1]
-            lZ = self.myCoordinates[row["from"]]["left"][2]
-            rX = self.myCoordinates[row["from"]]["right"][0]
-            rY = self.myCoordinates[row["from"]]["right"][1]
-            rZ = self.myCoordinates[row["from"]]["right"][2]
-            uX = self.myCoordinates[row["from"]]["up"][0]
-            uY = self.myCoordinates[row["from"]]["up"][1]
-            uZ = self.myCoordinates[row["from"]]["up"][2]
-            dX = self.myCoordinates[row["from"]]["down"][0]
-            dY = self.myCoordinates[row["from"]]["down"][1]
-            dZ = self.myCoordinates[row["from"]]["down"][2]
-            dxfspline = False  #we might have some problems opening it with blender, we use a line
-            if dxfspline:
-                #https://ezdxf.readthedocs.io/en/stable/tutorials/spline.html
-                fit_points = [(lX, lY, lZ), (uX, uY, uZ), (rX, rY, rZ), (dX, dY, dZ), (lX, lY, lZ)]
-                spline = msp.add_spline(fit_points)
+            myCenter = [fromX, fromY, fromZ]
+            if self.isValidSection(row["section"]):
+                secCoords = self.calculateSectionCoord(row["section"], myCenter, row["topographic"]["heading"], row["topographic"]["frontalInclination"], row["topographic"]["sideTilt"])
             else:
-                if self.isValidSection(row["section"]):
-                    secCoords = self.calculateSectionCoord(row["section"], fromY, row["topographic"]["heading"], row["topographic"]["frontalInclination"], row["topographic"]["sideTilt"])
-                    for secP in range(len(secCoords)):
-                        sFx = secCoords[secP][0]
-                        sFy = secCoords[secP][1]
-                        sFz = secCoords[secP][2]
-                        if secP == (len(secCoords)-1):
-                            sTx = secCoords[0][0]
-                            sTy = secCoords[0][1]
-                            sTz = secCoords[0][2]
-                        else:
-                            sTx = secCoords[secP+1][0]
-                            sTy = secCoords[secP+1][1]
-                            sTz = secCoords[secP+1][2]
-                        msp.add_line((sFx, sFy, sFz), (sTx, sTy, sTz))
-                else:
-                    msp.add_line((lX, lY, lZ), (uX, uY, uZ))
-                    msp.add_line((uX, uY, uZ), (rX, rY, rZ))
-                    msp.add_line((rX, rY, rZ), (dX, dY, dZ))
-                    msp.add_line((dX, dY, dZ), (lX, lY, lZ))
-            if self.w.dxfmesh.isChecked():
-                tlX = self.myCoordinates[row["to"]]["left"][0]
-                tlY = self.myCoordinates[row["to"]]["left"][1]
-                tlZ = self.myCoordinates[row["to"]]["left"][2]
-                trX = self.myCoordinates[row["to"]]["right"][0]
-                trY = self.myCoordinates[row["to"]]["right"][1]
-                trZ = self.myCoordinates[row["to"]]["right"][2]
-                tuX = self.myCoordinates[row["to"]]["up"][0]
-                tuY = self.myCoordinates[row["to"]]["up"][1]
-                tuZ = self.myCoordinates[row["to"]]["up"][2]
-                tdX = self.myCoordinates[row["to"]]["down"][0]
-                tdY = self.myCoordinates[row["to"]]["down"][1]
-                tdZ = self.myCoordinates[row["to"]]["down"][2]
-                endofbranch = bool((tlX,tlY,tlZ)==(trX,trY,trZ) and (tuX,tuY,tuZ)==(tdX,tdY,tdZ))
-                if not endofbranch:
-                    #https://ezdxf.readthedocs.io/en/stable/tutorials/mesh.html
-                    with mesh.edit_data() as mesh_data:
-                        mesh_data.add_face([(lX,lY,lZ), (tlX,tlY,tlZ), (tuX,tuY,tuZ), (uX,uY,uZ)])
-                        mesh_data.add_face([(uX,uY,uZ), (tuX,tuY,tuZ), (trX,trY,trZ), (rX,rY,rZ)])
-                        mesh_data.add_face([(rX,rY,rZ), (trX,trY,trZ), (tdX,tdY,tdZ), (dX,dY,dZ)])
-                        mesh_data.add_face([(dX,dY,dZ), (tdX,tdY,tdZ), (tlX,tlY,tlZ), (lX,lY,lZ)])
-                        mesh_data.optimize()  # optional, minimizes vertex count
-                else:
-                    with mesh.edit_data() as mesh_data:
-                        mesh_data.add_face([(lX,lY,lZ), (tlX,tlY,tlZ), (uX,uY,uZ)])
-                        mesh_data.add_face([(uX,uY,uZ), (tuX,tuY,tuZ), (rX,rY,rZ)])
-                        mesh_data.add_face([(rX,rY,rZ), (trX,trY,trZ), (dX,dY,dZ)])
-                        mesh_data.add_face([(dX,dY,dZ), (tdX,tdY,tdZ), (lX,lY,lZ)])
-                        mesh_data.optimize()  # optional, minimizes vertex count
+                l = row["walls"]['left']
+                r = row["walls"]['right']
+                u = row["walls"]['up']
+                d = row["walls"]['down']
+                section_from_walls = self.sectionFromWalls(l,r,u,d)
+                secCoords = self.calculateSectionCoord(section_from_walls, myCenter, row["topographic"]["heading"], row["topographic"]["frontalInclination"], row["topographic"]["sideTilt"])
+                #print(section_from_walls)
+            if len(secCoords)>0:
+                for secP in range(len(secCoords)):
+                    sFx = secCoords[secP][0]
+                    sFy = secCoords[secP][1]
+                    sFz = secCoords[secP][2]
+                    if secP == (len(secCoords)-1):
+                        sTx = secCoords[0][0]
+                        sTy = secCoords[0][1]
+                        sTz = secCoords[0][2]
+                    else:
+                        sTx = secCoords[secP+1][0]
+                        sTy = secCoords[secP+1][1]
+                        sTz = secCoords[secP+1][2]
+                    msp.add_line((sFx, sFy, sFz), (sTx, sTy, sTz))
+            if self.w.dxfmesh.isChecked() and len(secCoords)>0:
+                try:
+                    toRow = self.getFromPointData(Cfile, row["to"])
+                    if self.isValidSection(toRow["section"]):
+                        ToSection = toRow["section"]
+                    else:
+                        l = toRow["walls"]['left']
+                        r = toRow["walls"]['right']
+                        u = toRow["walls"]['up']
+                        d = toRow["walls"]['down']
+                        ToSection = self.sectionFromWalls(l,r,u,d)
+                    myCenter = [toX,toY,toZ]
+                    ToSecCoords = self.calculateSectionCoord(ToSection, myCenter, toRow["topographic"]["heading"], toRow["topographic"]["frontalInclination"], toRow["topographic"]["sideTilt"])
+                    endofbranch = False
+                except:
+                    endofbranch = True
+                for angle in range(360):
+                    i = angle%len(secCoords)
+                    n = (angle+1)%len(secCoords)
+                    aX = secCoords[i][0]
+                    aY = secCoords[i][1]
+                    aZ = secCoords[i][2]
+                    bX = secCoords[n][0]
+                    bY = secCoords[n][1]
+                    bZ = secCoords[n][2]
+                    try:
+                        if not endofbranch:
+                            cX = ToSecCoords[i][0]
+                            cY = ToSecCoords[i][1]
+                            cZ = ToSecCoords[i][2]
+                            dX = ToSecCoords[n][0]
+                            dY = ToSecCoords[n][1]
+                            dZ = ToSecCoords[n][2]
+                    except:
+                        endofbranch = True
+                    if not endofbranch:
+                        #https://ezdxf.readthedocs.io/en/stable/tutorials/mesh.html
+                        with mesh.edit_data() as mesh_data:
+                            mesh_data.add_face([(aX,aY,aZ), (cX,cY,cZ), (dX,dY,dZ), (bX,bY,bZ)])
+                    else:
+                        with mesh.edit_data() as mesh_data:
+                            mesh_data.add_face([(aX,aY,aZ), (toX,toY,toZ), (bX,bY,bZ)])
+                mesh_data.optimize()  # optional, minimizes vertex count
         cleanedname = self.cleanName(self.w.cavename.text())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
         Dfilename = cavefolder + "/" + cleanedname + ".dxf"
         doc.saveas(Dfilename)
+
+    def sectionFromWalls(self, l, r, u, d, tilt = 0):
+        section_from_walls = []
+        for alpha in range(0,360):
+            if (alpha+tilt) == 0:
+                dist = l
+            elif (alpha+tilt) == 90:
+                dist = d
+            elif (alpha+tilt) == 180:
+                dist = r
+            elif (alpha+tilt) == 270:
+                dist = u
+            else:
+                Ax=0
+                Ay=0
+                Bx=0
+                By=0
+                if (alpha+tilt) > 0 and (alpha+tilt) < 90:
+                    Ax=l
+                    Ay=0
+                    Bx=0
+                    By=-d
+                if (alpha+tilt) > 90 and (alpha+tilt) < 180:
+                    Ax=0
+                    Ay=-d
+                    Bx=-r
+                    By=0
+                if (alpha+tilt) > 180 and (alpha+tilt) < 270:
+                    Ax=-r
+                    Ay=0
+                    Bx=0
+                    By=u
+                if (alpha+tilt) > 270 and (alpha+tilt) < 360:
+                    Ax=0
+                    Ay=u
+                    Bx=l
+                    By=0
+                try:
+                    dist = ((Ax*By-Ay*Bx)/((Bx-Ax)*math.sin(math.radians(180-alpha))+(Ay-By)*math.cos(math.radians(180-alpha))))
+                except:
+                    dist = 0
+            section_from_walls.append(dist)
+        return section_from_walls
 
     def isValidSection(self, section):
         for dist in section:
