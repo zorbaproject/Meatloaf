@@ -87,9 +87,34 @@ class getLidar(QThread):
         self.scantime = 2
         self.lidarport = self.findYDLidarX4(["/dev/ttyUSB0", "/dev/ttyUSB1"])
         print("Found Lidar on " + str(self.lidarport))
+        self.lidarAddress = self.findUSBaddress("cp210x")
+        # "dmesg | grep ': cp210x converter detected' |sed 's/\[.*\] cp210x \(.*\):.*/\1/g' | tail -n1"
+        print("Lidar Address: "+self.lidarAddress)
+
 
     def __del__(self):
         print("Shutting down thread")
+
+    def findUSBaddress(self, myconverter, mydriver = ""):
+        addr = ""
+        if mydriver == "":
+            mydriver = myconverter
+        os.system("dmesg > /tmp/dmesg.log")
+        text_file = open("/tmp/dmesg.log", "r")
+        mylines = text_file.read().split("\n")
+        text_file.close()
+        for myline in mylines:
+            if ': '+myconverter+' converter detected' in myline:
+                addr = re.sub('\[.*\] '+mydriver+' (.*):.*','\g<1>', myline)
+        return addr
+
+    def reconnectUSB(self, myaddress, mydriver):
+        print("Trying to reconnect USB device "+myaddress)
+        os.system("sudo sh -c 'echo -n \""+myaddress+"\" > /sys/bus/usb/drivers/"+mydriver+"/unbind'")
+        sleep(1)
+        #sudo sh -c 'ls -hal /root/ > /root/test.out'
+        os.system("sudo sh -c 'echo -n \""+myaddress+"\" > /sys/bus/usb/drivers/"+mydriver+"/bind'")
+        sleep(1)
 
     def run(self):
         global toSleep
@@ -282,6 +307,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
+        print("Loading UI")
         file = QFile(os.path.abspath(os.path.dirname(sys.argv[0]))+"/charlotte.ui")
         file.open(QFile.ReadOnly)
         loader = QUiLoader(self)
@@ -289,11 +315,13 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.w)
         self.setWindowTitle("Charlotte")
         self.w.save.clicked.connect(self.SaveSurvey)
+        self.w.puntofisso.clicked.connect(self.puntofisso)
         self.w.openlastcave.stateChanged.connect(self.EditConf)
         self.w.exit.clicked.connect(self.chiudi)
         self.w.shutdown.clicked.connect(self.shutdown)
         self.w.reboot.clicked.connect(self.reboot)
         self.w.accesspoint.clicked.connect(self.accesspoint)
+        self.w.touch_calibrate.clicked.connect(self.touch_calibrate)
         self.w.updatedrawing.clicked.connect(self.updatedrawing)
         self.w.zoom.valueChanged.connect(self.zoomDrawings)
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
@@ -313,6 +341,8 @@ class MainWindow(QMainWindow):
         self.w.section.scale(1,-1)
         self.w.section.scale(20,20)
         self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down"]
+        print("UI loaded")
+        QApplication.processEvents()
         self.loadPersonalCFG()
         if os.path.isfile(self.mycfg['lastcave']) and self.mycfg['startfromlastcave']=='True':
             self.openFile()
@@ -343,6 +373,48 @@ class MainWindow(QMainWindow):
             #abilitiamo un samba share sulla cartella dei rilievi
             #abilitiamo un server web con listing dei file sulla cartella dei rilievi
             #diciamo all'utente di connettersi a 192.168.1.1
+
+    def touch_calibrate(self):
+        if isRPI:
+            print("Touchscreen calibration")
+            tmpfilename = "/tmp/xinput_calibrator.txt"
+            conffile = "/usr/share/X11/xorg.conf.d/40-libinput.conf"
+            os.system("xinput_calibrator > "+tmpfilename)
+            #https://www.waveshare.com/wiki/5inch_HDMI_LCD_(B)
+            text_file = open(tmpfilename, "r", encoding='utf-8')
+            lines = text_file.read().split("\n")
+            text_file.close()
+            newcal = []
+            for l in range(len(lines)):
+                if "\"InputClass\"" in lines[l]:
+                    newcal.append(lines[l])
+                    newcal.append(lines[l+1])
+                    newcal.append(lines[l+2])
+                    newcal.append(lines[l+3])
+                    newcal.append(lines[l+4])
+                    newcal.append(lines[l+5])
+                    break
+            text_file = open(conffile, "r", encoding='utf-8')
+            lines = text_file.read().split("\n")
+            text_file.close()
+            found = False
+            for l in range(len(lines)):
+                if "WaveShare" in lines[l]:
+                    lines[l+1] = newcal[3] #Option Calibration
+                    found = True
+                    break
+            if not found:
+                lines.extend(newcal)
+            conf = ""
+            for line in lines:
+                conf = conf + line + "\n"
+            tmpconf = "/tmp/touch_calibrate-xorg.conf"
+            text_file = open(tmpconf, "w", encoding='utf-8')
+            text_file.write(conf)
+            text_file.close()
+            os.system("sudo cp "+conffile+ " " +conffile+"."+datetime.now().strftime("%Y%m%d%H%M%S"))
+            os.system("sudo mv "+tmpconf+ " " +conffile)
+            self.w.statusbar.showMessage("Calibration values written in /usr/share/X11/xorg.conf.d/40-libinput.conf")
 
     def newCave(self):
         self.w.fromP.setText("0")
@@ -425,10 +497,12 @@ class MainWindow(QMainWindow):
 
     def startLidarScan(self):
         #if isRPI:
-        if True:
+        useLidar = True
+        useLidar = False
+        if useLidar:
             self.LidarThread = getLidar(self)
             self.LidarThread.GotScan.connect(self.LidarScanDone)
-            #self.LidarThread.finished.connect(self.itIsOff)
+            # Controlliamo se sia spento: #self.LidarThread.finished.connect(self.itIsOff)
             self.LidarThread.start()
 
     def LidarScanDone(self, output):
@@ -1180,6 +1254,17 @@ class MainWindow(QMainWindow):
             self.saveFile()
             self.w.save.setChecked(False)
             self.w.save.setText("Salva misurazione")
+            if self.mycfg["lastcave"] == "":
+                return
+            #increment from and to
+            self.incrementFromTo()
+        else:
+            self.w.save.setText("Salva misurazione")
+
+    def puntofisso(self):
+        #In questo caso catturiamo i dati ogni 2 secondi, e sottraiamo la distanza dal primo punto
+        if self.w.puntofisso.isChecked():
+            self.saveFile()
             if self.mycfg["lastcave"] == "":
                 return
             #increment from and to

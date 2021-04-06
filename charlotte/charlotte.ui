@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>624</width>
-    <height>421</height>
+    <height>423</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -207,6 +207,16 @@
               </property>
               <property name="text">
                <string>Salva misurazione</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="puntofisso">
+              <property name="text">
+               <string>Misura verso punto fisso</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -482,6 +492,13 @@
          <widget class="QPushButton" name="accesspoint">
           <property name="text">
            <string>Access point WiFi</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="touch_calibrate">
+          <property name="text">
+           <string>Calibra touchscreen</string>
           </property>
          </widget>
         </item>
