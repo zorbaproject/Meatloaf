@@ -25,31 +25,19 @@ try:
     import adafruit_lsm303_accel
     import adafruit_lsm303dlh_mag
     isRPI = True
+    print("Running on RPi")
 except:
     isRPI = False
+    print("Not running on RPi")
 
 
-try:
-    from PySide2.QtWidgets import QApplication
-except:
-    try:
-        from tkinter import messagebox
-        messagebox.showinfo("Installazione, attendi prego", "Sto per installare le librerie grafiche e ci vorrà del tempo. Premi Ok e vai a prenderti un caffè.")
-        pip.main(["install", "PySide2"])
-        from PySide2.QtWidgets import QApplication
-    except:
-        try:
-            from pip._internal import main
-            main(["install", "PySide2"])
-            from PySide2.QtWidgets import QApplication
-        except:
-            sys.exit(1)
 
-
+from PySide2.QtWidgets import QApplication
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtCore import QFile
 from PySide2.QtCore import QDir
 from PySide2.QtCore import Qt
+from PySide2.QtCore import QTimer
 from PySide2.QtCore import Signal
 from PySide2.QtCore import QSize
 from PySide2.QtWidgets import QLabel
@@ -67,6 +55,10 @@ from PySide2.QtGui import QPen
 from PySide2.QtGui import QColor
 from PySide2.QtGui import QTransform
 from PySide2.QtCore import QPointF
+
+import threading
+
+print("All modules imported")
 
 toSleep = 1
 samples = 5 #number of samples to take for calculating average
@@ -131,8 +123,10 @@ class getLidar(QThread):
         return
 
     def findYDLidarX4(self, ttys = ["/dev/ttyUSB0", "/dev/ttyUSB1"]):
+        print("Searching for Lidar on ")
         try:
             for tmptty in ttys:
+                print(tmptty)
                 Obj = PyLidar3.YdLidarX4(tmptty) #PyLidar3.your_version_of_lidar(port,chunk_size)
                 if(Obj.Connect()):
                     print(Obj.GetDeviceInfo())
@@ -350,6 +344,7 @@ class MainWindow(QMainWindow):
             self.getDataThread = getData(self)
             self.getDataThread.start()
         self.startLidarScan()
+        self.firstdistance = 0.0
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
 
@@ -498,7 +493,7 @@ class MainWindow(QMainWindow):
     def startLidarScan(self):
         #if isRPI:
         useLidar = True
-        useLidar = False
+        #useLidar = False
         if useLidar:
             self.LidarThread = getLidar(self)
             self.LidarThread.GotScan.connect(self.LidarScanDone)
@@ -615,7 +610,7 @@ class MainWindow(QMainWindow):
         cleanedname = re.sub("[^0-9A-Za-z\_\-]", "_", name)
         return cleanedname
 
-    def saveFile(self):
+    def saveFile(self, firstdistance = 0.0):
         cleanedname = self.cleanName(self.w.cavename.text())
         self.mycfg["lastcave"] = cleanedname
         if self.mycfg["lastcave"] == "":
@@ -634,11 +629,14 @@ class MainWindow(QMainWindow):
         temp = self.w.temperature.value()
         press = self.w.pressure.value()
 
+        dist = float(self.w.distance.value())
+        if firstdistance > 0.0:
+            dist = firstdistance - dist
         requiredData = {
         'sideTilt':self.w.sideTilt.value(),
         'frontalInclination':self.w.frontalInclination.value(),
         'heading':self.w.heading.value(),
-        'distance':self.w.distance.value()
+        'distance':dist
         }
 
         walls = {'left':self.w.leftW.value(), 'right':self.w.rightW.value(), 'up':self.w.upW.value(), 'down':self.w.downW.value()}
@@ -1263,14 +1261,39 @@ class MainWindow(QMainWindow):
 
     def puntofisso(self):
         #In questo caso catturiamo i dati ogni 2 secondi, e sottraiamo la distanza dal primo punto
+        self.firstdistance = float(self.w.distance.value())
         if self.w.puntofisso.isChecked():
-            self.saveFile()
-            if self.mycfg["lastcave"] == "":
-                return
-            #increment from and to
-            self.incrementFromTo()
-        else:
-            self.w.save.setText("Salva misurazione")
+            th = threading.Thread(target=self.puntofissoSave) #args=self.firstdistance
+            th.start()
+        #else:
+        #    th.stop()
+
+    def puntofissoSave(self):
+        #rm /home/luca/charlottedata/prova1/prova1.json && touch /home/luca/charlottedata/prova1/prova1.json
+        active = True
+        firstdistance = float(self.w.distance.value())
+        while active:
+            if self.w.puntofisso.isChecked():
+                self.w.puntofisso.setStyleSheet("background-color: rgb(0, 255, 0);")
+                self.saveFile(firstdistance)
+                if self.mycfg["lastcave"] == "":
+                    print("Error: lastcave is null")
+                    return
+                #increment from and to
+                self.incrementFromTo()
+                self.w.puntofisso.setStyleSheet("background-color: rgb(127, 127, 127);")
+                QApplication.processEvents()
+            else:
+                active = False
+                break
+            startTS = datetime.now().timestamp()
+            toWait = 2
+            toSleep = 0.1
+            print("Wait 2 seconds")
+            while (datetime.now().timestamp()-startTS) < toWait:
+                time.sleep(toSleep)
+        print("Stopping autosave timer")
+        return None
 
     def incrementFromTo(self):
         self.w.fromP.setText(self.w.toP.text())
