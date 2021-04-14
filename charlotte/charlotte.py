@@ -610,7 +610,7 @@ class MainWindow(QMainWindow):
         cleanedname = re.sub("[^0-9A-Za-z\_\-]", "_", name)
         return cleanedname
 
-    def saveFile(self, firstdistance = 0.0):
+    def saveFile(self, firstdistance = 0.0, doDraw = True):
         cleanedname = self.cleanName(self.w.cavename.text())
         self.mycfg["lastcave"] = cleanedname
         if self.mycfg["lastcave"] == "":
@@ -681,7 +681,8 @@ class MainWindow(QMainWindow):
         text_file.close()
 
         #we draw the result
-        self.updatedrawing()
+        if doDraw and len(Cfile['measurements'])<10:
+            self.updatedrawing()
 
     def json2CSV(self, Cfile):
         csvtxt = ""
@@ -1269,13 +1270,12 @@ class MainWindow(QMainWindow):
         #    th.stop()
 
     def puntofissoSave(self):
-        #rm /home/luca/charlottedata/prova1/prova1.json && touch /home/luca/charlottedata/prova1/prova1.json
         active = True
         firstdistance = float(self.w.distance.value())
         while active:
             if self.w.puntofisso.isChecked():
                 self.w.puntofisso.setStyleSheet("background-color: rgb(0, 255, 0);")
-                self.saveFile(firstdistance)
+                self.saveFile(firstdistance, doDraw=False)
                 if self.mycfg["lastcave"] == "":
                     print("Error: lastcave is null")
                     return
@@ -1287,12 +1287,14 @@ class MainWindow(QMainWindow):
                 active = False
                 break
             startTS = datetime.now().timestamp()
-            toWait = 2
+            toWait = 5
             toSleep = 0.1
             print("Wait 2 seconds")
             while (datetime.now().timestamp()-startTS) < toWait:
                 time.sleep(toSleep)
         print("Stopping autosave timer")
+        self.w.puntofisso.setStyleSheet("")
+        time.sleep(toSleep)
         return None
 
     def incrementFromTo(self):
