@@ -309,6 +309,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.w)
         self.setWindowTitle("Charlotte")
         self.w.save.clicked.connect(self.SaveSurvey)
+        self.w.selectcave.clicked.connect(self.OpenSurvey)
         self.w.puntofisso.clicked.connect(self.puntofisso)
         self.w.openlastcave.stateChanged.connect(self.EditConf)
         self.w.exit.clicked.connect(self.chiudi)
@@ -347,6 +348,11 @@ class MainWindow(QMainWindow):
         self.firstdistance = 0.0
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
+
+    def OpenSurvey(self):
+        self.mycfg['lastcave'] = self.w.cavename.text()
+        self.openFile()
+        self.savePersonalCFG()
 
     def chiudi(self):
         sys.exit(0)
@@ -1275,12 +1281,14 @@ class MainWindow(QMainWindow):
         while active:
             if self.w.puntofisso.isChecked():
                 self.w.puntofisso.setStyleSheet("background-color: rgb(0, 255, 0);")
+                newdistance = float(self.w.distance.value())
                 self.saveFile(firstdistance, doDraw=False)
                 if self.mycfg["lastcave"] == "":
                     print("Error: lastcave is null")
                     return
                 #increment from and to
                 self.incrementFromTo()
+                firstdistance = newdistance
                 self.w.puntofisso.setStyleSheet("background-color: rgb(127, 127, 127);")
                 QApplication.processEvents()
             else:
@@ -1289,7 +1297,7 @@ class MainWindow(QMainWindow):
             startTS = datetime.now().timestamp()
             toWait = 5
             toSleep = 0.1
-            print("Wait 2 seconds")
+            print("Wait "+str(toWait)+" seconds")
             while (datetime.now().timestamp()-startTS) < toWait:
                 time.sleep(toSleep)
         print("Stopping autosave timer")
