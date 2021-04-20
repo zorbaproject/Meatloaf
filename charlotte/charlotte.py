@@ -317,6 +317,8 @@ class MainWindow(QMainWindow):
         self.w.reboot.clicked.connect(self.reboot)
         self.w.accesspoint.clicked.connect(self.accesspoint)
         self.w.touch_calibrate.clicked.connect(self.touch_calibrate)
+        self.w.deleterow.clicked.connect(self.deleterow)
+        self.w.deletefixrow.clicked.connect(self.deletefixrow)
         self.w.updatedrawing.clicked.connect(self.updatedrawing)
         self.w.zoom.valueChanged.connect(self.zoomDrawings)
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
@@ -616,7 +618,7 @@ class MainWindow(QMainWindow):
         cleanedname = re.sub("[^0-9A-Za-z\_\-]", "_", name)
         return cleanedname
 
-    def saveFile(self, firstdistance = 0.0, doDraw = True):
+    def saveFile(self, doDraw = True):
         cleanedname = self.cleanName(self.w.cavename.text())
         self.mycfg["lastcave"] = cleanedname
         if self.mycfg["lastcave"] == "":
@@ -632,6 +634,37 @@ class MainWindow(QMainWindow):
         Xfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".csx"
         print("Saving to " + Cfilename)
 
+
+        #now we build the CSV based on the measurements
+        tfiletxt = self.json2CSV(self.myCaveFile)
+        text_file = open(Tfilename, "w", encoding='utf-8')
+        text_file.write(tfiletxt)
+        text_file.close()
+        self.populateTable(tfiletxt)
+
+        #now we build the cSurvey CSX file
+        xfiletxt = self.json2CSX(self.myCaveFile)
+        text_file = open(Xfilename, "w", encoding='utf-8')
+        text_file.write(xfiletxt)
+        text_file.close()
+
+        #we draw the result
+        if doDraw and len(self.myCaveFile['measurements'])<10:
+            self.updatedrawing()
+            
+    def appendNewPoint(self, firstdistance = 0.0, doDraw = True):
+        cleanedname = self.cleanName(self.w.cavename.text())
+        self.mycfg["lastcave"] = cleanedname
+        if self.mycfg["lastcave"] == "":
+            print("You need to specify a name for this cave")
+            return
+        self.savePersonalCFG()
+
+        cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
+        if not os.path.isdir(cavefolder):
+            os.mkdir(cavefolder)
+        Cfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".json"
+        
         temp = self.w.temperature.value()
         press = self.w.pressure.value()
 
@@ -672,23 +705,7 @@ class MainWindow(QMainWindow):
         text_file.close()
 
         self.myCaveFile = Cfile
-
-        #now we build the CSV based on the measurements
-        tfiletxt = self.json2CSV(Cfile)
-        text_file = open(Tfilename, "w", encoding='utf-8')
-        text_file.write(tfiletxt)
-        text_file.close()
-        self.populateTable(tfiletxt)
-
-        #now we build the cSurvey CSX file
-        xfiletxt = self.json2CSX(Cfile)
-        text_file = open(Xfilename, "w", encoding='utf-8')
-        text_file.write(xfiletxt)
-        text_file.close()
-
-        #we draw the result
-        if doDraw and len(Cfile['measurements'])<10:
-            self.updatedrawing()
+        self.saveFile(doDraw)
 
     def json2CSV(self, Cfile):
         csvtxt = ""
@@ -1180,6 +1197,24 @@ class MainWindow(QMainWindow):
     #    scoords = []
     #    return scoords
 
+    def deleterow(self):
+        self.deletefromtable(False)
+
+    def deletefixrow(self):
+        self.deletefromtable(True)
+    
+    def deletefromtable(self, autofix = False):
+        selIndex = self.w.fulltable.selectedItems()[-1].row() #vale solo l'ultimo selezionato
+        thisFrom = self.myCaveFile['measurements'][selIndex]['from']
+        thisTo = self.myCaveFile['measurements'][selIndex]['to']
+        print(self.myCaveFile['measurements'][selIndex])
+        del self.myCaveFile['measurements'][selIndex]
+        if autofix:
+            for i in range(len(self.myCaveFile['measurements'])):
+                if self.myCaveFile['measurements'][i]['to'] == thisFrom:
+                   self.myCaveFile['measurements'][i]['to'] = thisTo
+        self.saveFile()
+
     def populateTable(self, CSV):
         #TODO: delete rows and columns
         self.w.fulltable.setRowCount(0)
@@ -1256,7 +1291,8 @@ class MainWindow(QMainWindow):
     def SaveSurvey(self):
         if self.w.save.isChecked():
             self.w.save.setText("Sto salvando...")
-            self.saveFile()
+            #self.saveFile()
+            self.appendNewPoint()
             self.w.save.setChecked(False)
             self.w.save.setText("Salva misurazione")
             if self.mycfg["lastcave"] == "":
@@ -1282,7 +1318,7 @@ class MainWindow(QMainWindow):
             if self.w.puntofisso.isChecked():
                 self.w.puntofisso.setStyleSheet("background-color: rgb(0, 255, 0);")
                 newdistance = float(self.w.distance.value())
-                self.saveFile(firstdistance, doDraw=False)
+                self.appendNewPoint(firstdistance, doDraw=False)
                 if self.mycfg["lastcave"] == "":
                     print("Error: lastcave is null")
                     return
