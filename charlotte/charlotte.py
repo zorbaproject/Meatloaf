@@ -349,6 +349,8 @@ class MainWindow(QMainWindow):
             self.getDataThread.start()
         self.startLidarScan()
         self.firstdistance = 0.0
+        self.th = threading.Thread(target=self.puntofissoSave) #args=self.firstdistance
+        self.th.start()
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
 
@@ -1322,17 +1324,16 @@ class MainWindow(QMainWindow):
     def puntofisso(self):
         #In questo caso catturiamo i dati ogni 2 secondi, e sottraiamo la distanza dal primo punto
         self.firstdistance = float(self.w.distance.value())
-        if self.w.puntofisso.isChecked():
-            th = threading.Thread(target=self.puntofissoSave) #args=self.firstdistance
-            th.start()
-        #else:
-        #    th.stop()
 
     def puntofissoSave(self):
         active = True
         firstdistance = float(self.w.distance.value())
+        stopped = False
+        toWait = 5
+        toSleep = 0.1
         while active:
             if self.w.puntofisso.isChecked():
+                stopped = False
                 self.w.puntofisso.setStyleSheet("background-color: rgb(0, 255, 0);")
                 newdistance = float(self.w.distance.value())
                 self.appendNewPoint(firstdistance, doDraw=False)
@@ -1344,18 +1345,24 @@ class MainWindow(QMainWindow):
                 firstdistance = newdistance
                 self.w.puntofisso.setStyleSheet("background-color: rgb(127, 127, 127);")
                 QApplication.processEvents()
-            else:
-                active = False
-                break
             startTS = datetime.now().timestamp()
-            toWait = 5
-            toSleep = 0.1
             print("Wait "+str(toWait)+" seconds")
-            while (datetime.now().timestamp()-startTS) < toWait:
+            doWait = True
+            while doWait:
                 time.sleep(toSleep)
-        print("Stopping autosave timer")
-        self.w.puntofisso.setStyleSheet("")
-        time.sleep(toSleep)
+                if self.w.puntofisso.isChecked():
+                    doWait = bool((datetime.now().timestamp()-startTS) < toWait)
+                elif not stopped:
+                    stopped = True
+                    print("Stopping autosave timer")
+                    self.w.puntofisso.setStyleSheet("")
+                    time.sleep(toSleep)
+                    #QApplication.processEvents()
+                    time.sleep(toSleep)
+                else:
+                    doWait = True
+                if stopped and self.w.puntofisso.isChecked():
+                    break
         return None
 
     def incrementFromTo(self):
