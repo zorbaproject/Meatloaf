@@ -319,6 +319,7 @@ class MainWindow(QMainWindow):
         self.w.touch_calibrate.clicked.connect(self.touch_calibrate)
         self.w.deleterow.clicked.connect(self.deleterow)
         self.w.deletefixrow.clicked.connect(self.deletefixrow)
+        self.w.savetable.clicked.connect(self.savetable)
         self.w.updatedrawing.clicked.connect(self.updatedrawing)
         self.w.zoom.valueChanged.connect(self.zoomDrawings)
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
@@ -633,7 +634,11 @@ class MainWindow(QMainWindow):
         Tfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".csv"
         Xfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".csx"
         print("Saving to " + Cfilename)
-
+        
+        cfiletxt = json.dumps(self.myCaveFile)
+        text_file = open(Cfilename, "w", encoding='utf-8')
+        text_file.write(cfiletxt)
+        text_file.close()
 
         #now we build the CSV based on the measurements
         tfiletxt = self.json2CSV(self.myCaveFile)
@@ -649,7 +654,7 @@ class MainWindow(QMainWindow):
         text_file.close()
 
         #we draw the result
-        if doDraw and len(self.myCaveFile['measurements'])<10:
+        if doDraw and len(self.myCaveFile['measurements'])<2:
             self.updatedrawing()
             
     def appendNewPoint(self, firstdistance = 0.0, doDraw = True):
@@ -699,10 +704,6 @@ class MainWindow(QMainWindow):
         }
 
         Cfile['measurements'].append(thismeasure)
-        cfiletxt = json.dumps(Cfile)
-        text_file = open(Cfilename, "w", encoding='utf-8')
-        text_file.write(cfiletxt)
-        text_file.close()
 
         self.myCaveFile = Cfile
         self.saveFile(doDraw)
@@ -1213,6 +1214,22 @@ class MainWindow(QMainWindow):
             for i in range(len(self.myCaveFile['measurements'])):
                 if self.myCaveFile['measurements'][i]['to'] == thisFrom:
                    self.myCaveFile['measurements'][i]['to'] = thisTo
+        self.saveFile()
+        
+    def savetable(self, autofix = False):
+        selIndex = self.w.fulltable.selectedItems()[-1].row() #vale solo l'ultimo selezionato
+        for r in range(self.w.fulltable.rowCount()):
+            #self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down"]
+            self.myCaveFile['measurements'][r]['from'] = self.w.fulltable.item(r,0).text()
+            self.myCaveFile['measurements'][r]['to'] = self.w.fulltable.item(r,1).text()
+            self.myCaveFile['measurements'][r]['topographic']['sideTilt'] = float(self.w.fulltable.item(r,2).text())
+            self.myCaveFile['measurements'][r]['topographic']['frontalInclination'] = float(self.w.fulltable.item(r,3).text())
+            self.myCaveFile['measurements'][r]['topographic']['heading'] = float(self.w.fulltable.item(r,4).text())
+            self.myCaveFile['measurements'][r]['topographic']['distance'] = float(self.w.fulltable.item(r,5).text())
+            self.myCaveFile['measurements'][r]['walls']['left'] = float(self.w.fulltable.item(r,6).text())
+            self.myCaveFile['measurements'][r]['walls']['right'] = float(self.w.fulltable.item(r,7).text())
+            self.myCaveFile['measurements'][r]['walls']['up'] = float(self.w.fulltable.item(r,8).text())
+            self.myCaveFile['measurements'][r]['walls']['down'] = float(self.w.fulltable.item(r,9).text())
         self.saveFile()
 
     def populateTable(self, CSV):
