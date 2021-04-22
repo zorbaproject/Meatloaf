@@ -1331,18 +1331,31 @@ class MainWindow(QMainWindow):
         stopped = False
         toWait = 5
         toSleep = 0.1
+        firstrun = True
         while active:
             if self.w.puntofisso.isChecked():
                 stopped = False
-                self.w.puntofisso.setStyleSheet("background-color: rgb(0, 255, 0);")
                 newdistance = float(self.w.distance.value())
-                self.appendNewPoint(firstdistance, doDraw=False)
+                if firstrun:
+                    firstdistance = newdistance
+                    firstrun = False
+                    self.w.puntofisso.setStyleSheet("background-color: rgb(127, 127, 127);")
+                    time.sleep(toWait/2)
+                    continue
+                if (firstdistance-newdistance)<0:
+                    self.w.puntofisso.setStyleSheet("background-color: rgb(255, 0, 0);")
+                    time.sleep(toWait/2)
+                    continue
+                else:
+                    self.w.puntofisso.setStyleSheet("background-color: rgb(0, 255, 0);")
                 if self.mycfg["lastcave"] == "":
                     print("Error: lastcave is null")
                     return
+                self.appendNewPoint(firstdistance, doDraw=False)
                 #increment from and to
                 self.incrementFromTo()
                 firstdistance = newdistance
+                firstrun = False
                 self.w.puntofisso.setStyleSheet("background-color: rgb(127, 127, 127);")
                 QApplication.processEvents()
             startTS = datetime.now().timestamp()
@@ -1356,6 +1369,7 @@ class MainWindow(QMainWindow):
                     stopped = True
                     print("Stopping autosave timer")
                     self.w.puntofisso.setStyleSheet("")
+                    firstrun = True
                     time.sleep(toSleep)
                     #QApplication.processEvents()
                     time.sleep(toSleep)
