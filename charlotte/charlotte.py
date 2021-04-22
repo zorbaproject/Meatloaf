@@ -1342,7 +1342,7 @@ class MainWindow(QMainWindow):
                     self.w.puntofisso.setStyleSheet("background-color: rgb(127, 127, 127);")
                     time.sleep(toWait/2)
                     continue
-                if (firstdistance-newdistance)<0:
+                if (firstdistance-newdistance)<=0:
                     self.w.puntofisso.setStyleSheet("background-color: rgb(255, 0, 0);")
                     time.sleep(toWait/2)
                     continue
