@@ -523,71 +523,152 @@ class MainWindow(QMainWindow):
             self.calculateWalls(self.section, sideTilt)
             self.drawSection()
 
+    def getCoordinates(self, Cfile):
+        coord = {}
+        pointname = Cfile["measurements"][0]["from"]
+        frompointname = Cfile["measurements"][0]["from"]
+        myX = 0
+        myY = 0
+        myZ = 0
+        coord[pointname] = self.getPointWalls(pointname, frompointname, myX, myY, myZ)
+        for row in Cfile["measurements"]:
+            pointname = row["to"]
+            frompointname = row["from"]
+            try:
+                fromX = coord[frompointname]["pos"][0]
+                fromY = coord[frompointname]["pos"][1]
+                fromZ = coord[frompointname]["pos"][2]
+            except:
+                fromX = 0
+                fromY = 0
+                fromZ = 0
+            try:
+                sideTilt = row["topographic"]['sideTilt']
+                incl = row["topographic"]['frontalInclination']
+                heading = row["topographic"]['heading']
+                dist = row["topographic"]['distance']
+            except:
+                sideTilt = 0
+                incl = 0
+                heading = 0
+                dist = 0
+            myX = fromX + (dist*(math.cos(math.radians(heading)))*(math.cos(math.radians(incl))))
+            myY = fromY + (dist*(math.sin(math.radians(heading)))*(math.cos(math.radians(incl))))
+            myZ = fromZ + (dist*(math.sin(math.radians(incl))))
+            coord[pointname] = self.getPointWalls(pointname, frompointname, myX, myY, myZ)
+        self.myCoordinates = coord
+
+    def getPointWalls(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
+        pcoords = {}
+        if Cfile == None:
+            Cfile = self.myCaveFile
+        rawdata = self.getFromPointData(Cfile, frompointname)
+        try:
+            sideTilt = rawdata["topographic"]['sideTilt']
+            incl = rawdata["topographic"]['frontalInclination']
+            heading = rawdata["topographic"]['heading']
+            dist = rawdata["topographic"]['distance']
+        except:
+            sideTilt = 0
+            incl = 0
+            heading = 0
+            dist = 0
+        rawdata = self.getFromPointData(Cfile, pointname)
+        if len(rawdata) >0:
+            l = rawdata["walls"]['left']
+            r = rawdata["walls"]['right']
+            u = rawdata["walls"]['up']
+            d = rawdata["walls"]['down']
+            myCenter = [myX,myY,myZ]
+            left = self.calculate3DCoord(l, 0, myCenter, heading, incl, sideTilt)
+            down = self.calculate3DCoord(d, 90, myCenter, heading, incl, sideTilt)
+            right = self.calculate3DCoord(r, 180, myCenter, heading, incl, sideTilt)
+            up = self.calculate3DCoord(u, 270, myCenter, heading, incl, sideTilt)
+            pcoords = {"pos":myCenter,"left":left,"right":right,"up":up,"down":down}
+        else:
+            pcoords = {"pos":[myX,myY,myZ],"left":[myX,myY,myZ],"right":[myX,myY,myZ],"up":[myX,myY,myZ],"down":[myX,myY,myZ]}
+        return pcoords
+
+    #def getPointSection(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
+    #    print("Calculating section points")
+    #    scoords = []
+    #    return scoords
+
+
+
     def calculateSectionCoord(self, section, myCenter = [0.0, 0.0, 0.0], heading = 0.0, incl = 0.0, sidetilt = 0.0):
         if len(section) <360:
             return None
         coords = []
         for angle in range(360):
-            tmpangle = 360-(angle-sidetilt)
+            tmpangle = 360-(angle)
             d = section[angle]
-            x = - d*math.cos(math.radians(tmpangle))
-            y = 0
-            z = d*math.sin(math.radians(tmpangle))
+            tmpcoord = self.calculate3DCoord(d, tmpangle, myCenter, heading, incl, sidetilt)
+            coords.append(tmpcoord)
+        return coords
 
-            #This code seems to be slower than numpy
-            #rotate by heading
-            #hCorr = 90
-            #xold = -x
-            #yold = y
-            #x = (xold*(math.cos(math.radians(heading+hCorr)))) - (yold*(math.sin(math.radians(heading+hCorr))))
-            #y = (xold*(math.sin(math.radians(heading+hCorr)))) + (yold*(math.cos(math.radians(heading+hCorr))))
-            #rotate by incl
-            #iCorr = 0.0
-            #yold = y
-            #zold = z
-            #y = (yold*(math.cos(math.radians(incl+iCorr)))) - (zold*(math.sin(math.radians(incl+iCorr))))
-            #z = (yold*(math.sin(math.radians(incl+iCorr)))) + (zold*(math.cos(math.radians(incl+iCorr))))
+    def calculate3DCoord(self, d, angle, myCenter = [0.0, 0.0, 0.0], heading = 0.0, incl = 0.0, sidetilt = 0.0):
+        #
+        tmpangle = (angle-sidetilt)
+        x = - d*math.cos(math.radians(tmpangle))
+        y = 0
+        z = d*math.sin(math.radians(tmpangle))
 
-            #Rotate by heading
-            hCorr = 90 #section should be perpendicular to the heading
-            theta = np.radians(heading+hCorr)
-            #rotation matrix
-            r = np.array((
-             (np.cos(theta),-np.sin(theta), 0),
-             (np.sin(theta),np.cos(theta), 0),
-             (0,0,1)
-            ))
-            #Vector X,Y,Z
-            v = np.array((x,y,z))
-            #dot product matrix*vector
-            newCoords = r.dot(v)
-            x = newCoords[0]
-            y = newCoords[1]
-            z = newCoords[2]
+        #This code seems to be slower than numpy
+        #rotate by incl
+        #iCorr = 0.0
+        #yold = y
+        #zold = z
+        #y = (yold*(math.cos(math.radians(incl+iCorr)))) - (zold*(math.sin(math.radians(incl+iCorr))))
+        #z = (yold*(math.sin(math.radians(incl+iCorr)))) + (zold*(math.cos(math.radians(incl+iCorr))))
+        #rotate by heading
+        #hCorr = 90
+        #xold = -x
+        #yold = y
+        #x = (xold*(math.cos(math.radians(heading+hCorr)))) - (yold*(math.sin(math.radians(heading+hCorr))))
+        #y = (xold*(math.sin(math.radians(heading+hCorr)))) + (yold*(math.cos(math.radians(heading+hCorr))))
 
-            #Rotate by inclination
-            theta = np.radians(incl)
-            #rotation matrix
-            r = np.array((
-             (1,0,0),
-             (0,np.cos(theta),-np.sin(theta)),
-             (0,np.sin(theta),np.cos(theta))
-            ))
-            #Vector X,Y,Z
-            v = np.array((x,y,z))
-            #apply the rotation matrix r to v: r*v
-            newCoords = r.dot(v)
-            x = newCoords[0]
-            y = newCoords[1]
-            z = newCoords[2]
+        #Rotate by inclination
+        iCorr = 0.0
+        theta = np.radians(incl+iCorr)
+        #rotation matrix
+        r = np.array((
+         (1,0,0),
+         (0,np.cos(theta),-np.sin(theta)),
+         (0,np.sin(theta),np.cos(theta))
+        ))
+        #Vector X,Y,Z
+        v = np.array((x,y,z))
+        #apply the rotation matrix r to v: r*v
+        newCoords = r.dot(v)
+        x = newCoords[0]
+        y = newCoords[1]
+        z = newCoords[2]
 
-            #Translate by center
-            x = x + myCenter[0]
-            y = y + myCenter[1]
-            z = z + myCenter[2]
+        #Rotate by heading
+        hCorr = 90 #section should be perpendicular to the heading
+        theta = np.radians(heading+hCorr)
+        #rotation matrix
+        r = np.array((
+         (np.cos(theta),-np.sin(theta), 0),
+         (np.sin(theta),np.cos(theta), 0),
+         (0,0,1)
+        ))
+        #Vector X,Y,Z
+        v = np.array((x,y,z))
+        #dot product matrix*vector
+        newCoords = r.dot(v)
+        x = newCoords[0]
+        y = newCoords[1]
+        z = newCoords[2]
 
-            #add values to coords list
-            coords.append([x,y,z])
+        #Translate by center
+        x = x + myCenter[0]
+        y = y + myCenter[1]
+        z = z + myCenter[2]
+
+        #add values to coords list
+        coords = [x,y,z]
         return coords
 
     def calculateWalls(self, section, sideTilt = 0):
@@ -1121,84 +1202,6 @@ class MainWindow(QMainWindow):
             if found == True:
                 break
         return found
-
-    def getCoordinates(self, Cfile):
-        coord = {}
-        pointname = Cfile["measurements"][0]["from"]
-        frompointname = Cfile["measurements"][0]["from"]
-        myX = 0
-        myY = 0
-        myZ = 0
-        coord[pointname] = self.getPointWalls(pointname, frompointname, myX, myY, myZ)
-        for row in Cfile["measurements"]:
-            pointname = row["to"]
-            frompointname = row["from"]
-            try:
-                fromX = coord[frompointname]["pos"][0]
-                fromY = coord[frompointname]["pos"][1]
-                fromZ = coord[frompointname]["pos"][2]
-            except:
-                fromX = 0
-                fromY = 0
-                fromZ = 0
-            try:
-                sideTilt = row["topographic"]['sideTilt']
-                incl = row["topographic"]['frontalInclination']
-                heading = row["topographic"]['heading']
-                dist = row["topographic"]['distance']
-            except:
-                sideTilt = 0
-                incl = 0
-                heading = 0
-                dist = 0
-            myX = fromX + (dist*(math.cos(math.radians(heading))))
-            myY = fromY + (dist*(math.sin(math.radians(heading))))
-            myZ = fromZ + (dist*(math.sin(math.radians(incl))))
-            coord[pointname] = self.getPointWalls(pointname, frompointname, myX, myY, myZ)
-        self.myCoordinates = coord
-
-    def getPointWalls(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
-        pcoords = {}
-        if Cfile == None:
-            Cfile = self.myCaveFile
-        rawdata = self.getFromPointData(Cfile, frompointname)
-        try:
-            sideTilt = rawdata["topographic"]['sideTilt']
-            incl = rawdata["topographic"]['frontalInclination']
-            heading = rawdata["topographic"]['heading']
-            dist = rawdata["topographic"]['distance']
-        except:
-            sideTilt = 0
-            incl = 0
-            heading = 0
-            dist = 0
-        rawdata = self.getFromPointData(Cfile, pointname)
-        if len(rawdata) >0:
-            l = rawdata["walls"]['left']
-            r = rawdata["walls"]['right']
-            u = rawdata["walls"]['up']
-            d = rawdata["walls"]['down']
-            lX = myX + (l*(math.cos(math.radians(heading+90))))
-            lY = myY + (l*(math.sin(math.radians(heading+90))))
-            lZ = myZ
-            rX = myX + (r*(math.cos(math.radians(heading-90))))
-            rY = myY + (r*(math.sin(math.radians(heading-90))))
-            rZ = myZ
-            uX = myX
-            uY = myY + (u*(math.sin(math.radians(heading+90))))
-            uZ = myZ + (u*(math.sin(math.radians(incl+90))))
-            dX = myX
-            dY = myY + (d*(math.sin(math.radians(heading-90))))
-            dZ = myZ + (d*(math.sin(math.radians(incl-90))))
-            pcoords = {"pos":[myX,myY,myZ],"left":[lX,lY,lZ],"right":[rX,rY,rZ],"up":[uX,uY,uZ],"down":[dX,dY,dZ]}
-        else:
-            pcoords = {"pos":[myX,myY,myZ],"left":[myX,myY,myZ],"right":[myX,myY,myZ],"up":[myX,myY,myZ],"down":[myX,myY,myZ]}
-        return pcoords
-
-    #def getPointSection(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
-    #    print("Calculating section points")
-    #    scoords = []
-    #    return scoords
 
     def deleterow(self):
         self.deletefromtable(False)
