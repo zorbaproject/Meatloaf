@@ -351,6 +351,7 @@ class MainWindow(QMainWindow):
         self.firstdistance = 0.0
         self.th = threading.Thread(target=self.puntofissoSave) #args=self.firstdistance
         self.th.start()
+        self.currentzoom = 1
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
 
@@ -630,7 +631,7 @@ class MainWindow(QMainWindow):
 
         #Rotate by inclination
         iCorr = 0.0
-        theta = np.radians(incl+iCorr)
+        theta = np.radians(-incl+iCorr)
         #rotation matrix
         r = np.array((
          (1,0,0),
@@ -856,6 +857,7 @@ class MainWindow(QMainWindow):
         #scenes
         spaccato = QGraphicsScene()
         pianta = QGraphicsScene()
+
         for branch in self.branches:
             Ppoligon = QPainterPath()
             Spoligon = QPainterPath()
@@ -872,8 +874,8 @@ class MainWindow(QMainWindow):
                 myX = self.myCoordinates[point]["pos"][0]
                 myY = self.myCoordinates[point]["pos"][1]
                 myZ = self.myCoordinates[point]["pos"][2]
-                Ppath.lineTo(QPointF(myX, myY))
-                Spath.lineTo(QPointF(myY, myZ))
+                Ppath.lineTo(QPointF(myX, -myY))
+                Spath.lineTo(QPointF(myY, -myZ))
                 #print(Ppath.currentPosition())
                 lX = self.myCoordinates[point]["left"][0]
                 lY = self.myCoordinates[point]["left"][1]
@@ -887,10 +889,10 @@ class MainWindow(QMainWindow):
                 dX = self.myCoordinates[point]["down"][0]
                 dY = self.myCoordinates[point]["down"][1]
                 dZ = self.myCoordinates[point]["down"][2]
-                left.append([lX,lY])
-                right.append([rX,rY])
-                up.append([uY,uZ])
-                down.append([dY,dZ])
+                left.append([lX,-lY])
+                right.append([rX,-rY])
+                up.append([uY,-uZ])
+                down.append([dY,-dZ])
             Ppoligon.moveTo(QPointF(left[0][0], left[0][1]))
             Spoligon.moveTo(QPointF(up[0][0], up[0][1]))
             for p in left:
@@ -915,10 +917,10 @@ class MainWindow(QMainWindow):
                 c1 = Spoligon.currentPosition()
                 c2 = QPointF(p[0], p[1])
                 Spoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
-            PennaBordo = QPen(Qt.black, 1, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin) #Qt.Dashline https://doc.qt.io/qtforpython/PySide2/QtGui/QPen.html
+            PennaBordo = QPen(Qt.black, 0.1, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin) #Qt.Dashline https://doc.qt.io/qtforpython/PySide2/QtGui/QPen.html
             pianta.addPath(Ppoligon, PennaBordo)
             spaccato.addPath(Spoligon, PennaBordo)
-            PennaPoligonale = QPen(Qt.red)
+            PennaPoligonale = QPen(Qt.red, 0.1)
             pianta.addPath(Ppath, PennaPoligonale)
             spaccato.addPath(Spath, PennaPoligonale)
         #show in graphicsview
@@ -926,6 +928,7 @@ class MainWindow(QMainWindow):
         self.w.spaccato.setScene(spaccato)
         self.w.pianta.show()
         self.w.spaccato.show()
+        self.w.zoom.setValue(self.w.zoom.maximum())
         #files
         cleanedname = self.cleanName(self.w.cavename.text())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
@@ -985,9 +988,10 @@ class MainWindow(QMainWindow):
 
     def zoomDrawings(self, val):
         zoom = self.w.zoom.value()/10
-        self.Json2Svg(self.myCaveFile)
-        self.w.pianta.scale(zoom,zoom)
-        self.w.spaccato.scale(zoom,zoom)
+        #self.Json2Svg(self.myCaveFile)
+        self.w.pianta.scale(zoom/self.currentzoom,zoom/self.currentzoom)
+        self.w.spaccato.scale(zoom/self.currentzoom,zoom/self.currentzoom)
+        self.currentzoom = zoom
 
     def Json2Dxf(self, Cfile):
         #Note: it's also possible to load this with Blender https://www.blender3darchitect.com/cad/importing-dxf-files-to-blender-2-8/
