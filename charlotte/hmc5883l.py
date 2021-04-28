@@ -99,12 +99,10 @@ if __name__ == "__main__":
     #if len(sys.argv)>1:
     #    myport = int(sys.argv[1])
     #compass1 = hmc5883l(port = myport, gauss = 4.7, declination = (-2,5))
-    compass1 = hmc5883l(port = 1, gauss = 4.7, declination = (-2,5))
     compass3 = hmc5883l(port = 3, gauss = 4.7, declination = (-2,5))
     while True:
         #sys.stdout.write("\rHeading: " + str(compass1.degrees(compass1.heading())) + "     ")
         #sys.stdout.flush()
-        print("Heading bus 1: " + str(compass1.degrees(compass1.heading())))
-        print("Heading bus 3: " + str(compass3.degrees(compass3.heading())))
+        print("Heading bus 3: " + str(compass3.heading()))
         time.sleep(1)
 
