@@ -1,8 +1,11 @@
+LSM303DLHC-test.py
 TTLrangefinder1D.py
 YDLidarX4test.py
+bootconfig.txt
 charlotte.ui
 charlotte.py
 README.md
+hmc5883l.py
 lsm303dlhTEST.py
 install.sh
 autologin.sh

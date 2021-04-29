@@ -10,6 +10,7 @@ import re
 from datetime import datetime
 import numpy as np
 
+
 import ezdxf
 
 try:
@@ -22,8 +23,9 @@ try:
     import w1thermsensor
     import board
     import busio
-    import adafruit_lsm303_accel
-    import adafruit_lsm303dlh_mag
+    #import adafruit_lsm303_accel
+    #import adafruit_lsm303dlh_mag
+    import smbus
     isRPI = True
     print("Running on RPi")
 except:
@@ -158,6 +160,85 @@ class getLidar(QThread):
             print("Error connecting to device")
         return myscan
 
+class hmc5883l:
+
+    __scales = {
+        0.88: [0, 0.73],
+        1.30: [1, 0.92],
+        1.90: [2, 1.22],
+        2.50: [3, 1.52],
+        4.00: [4, 2.27],
+        4.70: [5, 2.56],
+        5.60: [6, 3.03],
+        8.10: [7, 4.35],
+    }
+
+    def __init__(self, port=1, address=0x1E, gauss=1.3, declination=(0,0)):
+        self.hmcbus = smbus.SMBus(port)
+        self.address = address
+
+        (degrees, minutes) = declination
+        self.__declDegrees = degrees
+        self.__declMinutes = minutes
+        self.__declination = (degrees + minutes / 60) * math.pi / 180
+
+        (reg, self.__scale) = self.__scales[gauss]
+        self.hmcbus.write_byte_data(self.address, 0x00, 0x70) # 8 Average, 15 Hz, normal measurement
+        self.hmcbus.write_byte_data(self.address, 0x01, reg << 5) # Scale
+        self.hmcbus.write_byte_data(self.address, 0x02, 0x00) # Continuous measurement
+
+    def declination(self):
+        return (self.__declDegrees, self.__declMinutes)
+
+    def twos_complement(self, val, len):
+        # Convert twos compliment to integer
+        if (val & (1 << len - 1)):
+            val = val - (1<<len)
+        return val
+
+    def __convert(self, data, offset):
+        val = self.twos_complement(data[offset] << 8 | data[offset+1], 16)
+        if val == -4096: return None
+        return round(val * self.__scale, 4)
+
+    def axes(self):
+        data = self.hmcbus.read_i2c_block_data(self.address, 0x00)
+        #print map(hex, data)
+        x = self.__convert(data, 3)
+        y = self.__convert(data, 7)
+        z = self.__convert(data, 5)
+        return (x,y,z)
+
+    def heading(self):
+        (x, y, z) = self.axes()
+        headingRad = math.atan2(y, x)
+        headingRad += self.__declination
+
+        # Correct for reversed heading
+        if headingRad < 0:
+            headingRad += 2 * math.pi
+
+        # Check for wrap and compensate
+        elif headingRad > 2 * math.pi:
+            headingRad -= 2 * math.pi
+
+        # Convert to degrees from radians
+        headingDeg = headingRad * 180 / math.pi
+        return headingDeg
+
+    def degrees(self, headingDeg):
+        degrees = math.floor(headingDeg)
+        minutes = round((headingDeg - degrees) * 60)
+        return (degrees, minutes)
+
+    def __str__(self):
+        (x, y, z) = self.axes()
+        return "Axis X: " + str(x) + "\n" \
+               "Axis Y: " + str(y) + "\n" \
+               "Axis Z: " + str(z) + "\n" \
+               "Declination: " + self.degrees(self.declination()) + "\n" \
+               "Heading: " + self.degrees(self.heading()) + "\n"
+
 class getData(QThread):
     #######################################Here we read temperature, pressure, distance, and 3-axis position
     def __init__(self, parent, mydata = ""):
@@ -176,14 +257,15 @@ class getData(QThread):
         self.distancecode = "m," #This is the response to look for after requesting a distance measurement
         #Cerco i sensori
         try:
-            self.i2c = busio.I2C(board.SCL, board.SDA)
-            self.mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(self.i2c)
-            self.accel = adafruit_lsm303_accel.LSM303_Accel(self.i2c)
+            self.lsmbus = self.getLSM303_bus(1)
         except:
             print("Unable to find LSM303DLH compass and inclinometer.")
-            self.i2c = None
-            self.mag = None
-            self.accel = None
+            self.lsmbus = None
+        try:
+            self.compass3 = hmc5883l(port = 3, gauss = 4.7, declination = (-2,5))
+        except:
+            print("Unable to find HCM5883L compass and inclinometer.")
+            self.compass3 = None
         self.rangefinderTTY = self.searchRangefinder(['/dev/ttyUSB0','/dev/ttyUSB1'])
         print("Rangefinder: " + str(self.rangefinderTTY))
         try:
@@ -207,11 +289,20 @@ class getData(QThread):
             except:
                 self.requiredData["temperature"] = -127
             try:
-                mag_x, mag_y, mag_z = self.mag.magnetic
-                accel_x,accel_y,accel_z = self.accel.acceleration
-                self.requiredData["sideTilt"] = self.get_x_rotation(accel_x,accel_y,accel_z)
-                self.requiredData["frontalInclination"] = self.get_y_rotation(accel_x,accel_y,accel_z)
-                self.requiredData["heading"] = self.get_heading(mag_x,mag_y,mag_z)
+                xAccl,yAccl,zAccl = self.getLSM303_accel(self.lsmbus)
+                xMag,yMag,zMag = self.getLSM303_heading(self.lsmbus)
+                self.requiredData["sideTilt"] = self.get_x_rotation(xAccl,yAccl,zAccl)
+                self.requiredData["frontalInclination"] = self.get_y_rotation(xAccl,yAccl,zAccl)
+                heading1 = self.get_heading(xMag,yMag,zMag)
+                heading3 = self.compass3.heading()
+                print("heading 0° incl: " + str(heading1))
+                print("heading 90° incl: " + str(heading3))
+                if bool(self.requiredData["frontalInclination"] > -45 and self.requiredData["frontalInclination"] < 45) or bool(self.requiredData["frontalInclination"] > 135 and self.requiredData["frontalInclination"] < -135):
+                    self.requiredData["heading"] = heading1
+                    print("0° choosen")
+                else:
+                    self.requiredData["heading"] = heading3
+                    print("90° choosen")
             except:
                 self.requiredData["sideTilt"] = 0.0
                 self.requiredData["frontalInclination"] = 0.0
@@ -259,6 +350,7 @@ class getData(QThread):
         line = ""
         dist = 0.0
         lookfordistance = True
+        errcount = 0
         while lookfordistance:
             try:
                 with serial.Serial(self.rangefinderTTY, self.RFbaudrate, timeout=1) as ser:
@@ -273,7 +365,16 @@ class getData(QThread):
                         #print("Distance: "+str(dist))
                         lookfordistance = False
             except:
+                errcount = errcount + 1
                 sleep(0.1)
+                if errcount > 10:
+                    print("Unable to read valid data from rangefinder")
+                    break
+        try:
+            t = float(dist)
+        except:
+            dist = 0.0
+            print("Error: Distance value must be a number")
         return dist
 
     def dist(self, a,b):
@@ -296,6 +397,114 @@ class getData(QThread):
         if heading <0:
             heading = heading + 360
         return heading
+
+
+    #
+    def getLSM303_bus(self, busnum = 1):
+    # Get I2C bus
+      bus = smbus.SMBus(busnum)
+
+    # LSM303DLHC Accl address, 0x19(25)
+    # Select control register1, 0x20(32)
+    #		0x27(39)	Acceleration data rate = 10Hz, Power ON, X, Y, Z axis enabled
+      bus.write_byte_data(0x19, 0x20, 0x27)
+    # LSM303DLHC Accl address, 0x19(25)
+    # Select control register4, 0x23(35)
+    #		0x00(00)	Continuos update, Full scale selection = +/-2g,
+      bus.write_byte_data(0x19, 0x23, 0x00)
+
+      time.sleep(0.5)
+      return bus
+
+
+    def getLSM303_accel(self, bus):
+    # LSM303DLHC Accl address, 0x19(25)
+    # Read data back from 0x28(40), 2 bytes
+    # X-Axis Accl LSB, X-Axis Accl MSB
+      data0 = bus.read_byte_data(0x19, 0x28)
+      data1 = bus.read_byte_data(0x19, 0x29)
+
+    # Convert the data
+      xAccl = data1 * 256 + data0
+      if xAccl > 32767 :
+            xAccl -= 65536
+
+    # LSM303DLHC Accl address, 0x19(25)
+    # Read data back from 0x2A(42), 2 bytes
+    # Y-Axis Accl LSB, Y-Axis Accl MSB
+      data0 = bus.read_byte_data(0x19, 0x2A)
+      data1 = bus.read_byte_data(0x19, 0x2B)
+
+    # Convert the data
+      yAccl = data1 * 256 + data0
+      if yAccl > 32767 :
+            yAccl -= 65536
+
+    # LSM303DLHC Accl address, 0x19(25)
+    # Read data back from 0x2C(44), 2 bytes
+    # Z-Axis Accl LSB, Z-Axis Accl MSB
+      data0 = bus.read_byte_data(0x19, 0x2C)
+      data1 = bus.read_byte_data(0x19, 0x2D)
+
+    # Convert the data
+      zAccl = data1 * 256 + data0
+      if zAccl > 32767 :
+            zAccl -= 65536
+
+      return (xAccl,yAccl,zAccl)
+
+    def getLSM303_heading(self, bus):
+    # LSM303DLHC Mag address, 0x1E(30)
+    # Select MR register, 0x02(02)
+    #		0x00(00)	Continous conversion mode
+      bus.write_byte_data(0x1E, 0x02, 0x00)
+    # LSM303DLHC Mag address, 0x1E(30)
+    # Select CRA register, 0x00(00)
+    #		0x10(16)	Temperatuer disabled, Data output rate = 15Hz
+      bus.write_byte_data(0x1E, 0x00, 0x10)
+    # LSM303DLHC Mag address, 0x1E(30)
+    # Select CRB register, 0x01(01)
+    #		0x20(32)	Gain setting = +/- 1.3g
+      bus.write_byte_data(0x1E, 0x01, 0x20)
+
+      time.sleep(0.5)
+
+    # LSM303DLHC Mag address, 0x1E(30)
+    # Read data back from 0x03(03), 2 bytes
+    # X-Axis Mag MSB, X-Axis Mag LSB
+      data0 = bus.read_byte_data(0x1E, 0x03)
+      data1 = bus.read_byte_data(0x1E, 0x04)
+
+    # Convert the data
+      xMag = data0 * 256 + data1
+      if xMag > 32767 :
+            xMag -= 65536
+
+    # LSM303DLHC Mag address, 0x1E(30)
+    # Read data back from 0x05(05), 2 bytes
+    # Y-Axis Mag MSB, Y-Axis Mag LSB
+      data0 = bus.read_byte_data(0x1E, 0x07)
+      data1 = bus.read_byte_data(0x1E, 0x08)
+
+    # Convert the data
+      yMag = data0 * 256 + data1
+      if yMag > 32767 :
+            yMag -= 65536
+
+    # LSM303DLHC Mag address, 0x1E(30)
+    # Read data back from 0x07(07), 2 bytes
+    # Z-Axis Mag MSB, Z-Axis Mag LSB
+      data0 = bus.read_byte_data(0x1E, 0x05)
+      data1 = bus.read_byte_data(0x1E, 0x06)
+
+    # Convert the data
+      zMag = data0 * 256 + data1
+      if zMag > 32767 :
+            zMag -= 65536
+
+      return (xMag,yMag,zMag)
+
+
 
 class MainWindow(QMainWindow):
 

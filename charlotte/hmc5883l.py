@@ -28,7 +28,7 @@ class hmc5883l:
     }
 
     def __init__(self, port=1, address=0x1E, gauss=1.3, declination=(0,0)):
-        self.bus = smbus.SMBus(port)
+        self.hmcbus = smbus.SMBus(port)
         self.address = address
 
         (degrees, minutes) = declination
@@ -37,9 +37,9 @@ class hmc5883l:
         self.__declination = (degrees + minutes / 60) * math.pi / 180
 
         (reg, self.__scale) = self.__scales[gauss]
-        self.bus.write_byte_data(self.address, 0x00, 0x70) # 8 Average, 15 Hz, normal measurement
-        self.bus.write_byte_data(self.address, 0x01, reg << 5) # Scale
-        self.bus.write_byte_data(self.address, 0x02, 0x00) # Continuous measurement
+        self.hmcbus.write_byte_data(self.address, 0x00, 0x70) # 8 Average, 15 Hz, normal measurement
+        self.hmcbus.write_byte_data(self.address, 0x01, reg << 5) # Scale
+        self.hmcbus.write_byte_data(self.address, 0x02, 0x00) # Continuous measurement
 
     def declination(self):
         return (self.__declDegrees, self.__declMinutes)
@@ -56,7 +56,7 @@ class hmc5883l:
         return round(val * self.__scale, 4)
 
     def axes(self):
-        data = self.bus.read_i2c_block_data(self.address, 0x00)
+        data = self.hmcbus.read_i2c_block_data(self.address, 0x00)
         #print map(hex, data)
         x = self.__convert(data, 3)
         y = self.__convert(data, 7)
@@ -99,7 +99,8 @@ if __name__ == "__main__":
     #if len(sys.argv)>1:
     #    myport = int(sys.argv[1])
     #compass1 = hmc5883l(port = myport, gauss = 4.7, declination = (-2,5))
-    compass3 = hmc5883l(port = 3, gauss = 4.7, declination = (-2,5))
+    compass3 = hmc5883l(port = 3, gauss = 4.7, declination = (4,3))
+    #48000.3mT
     while True:
         #sys.stdout.write("\rHeading: " + str(compass1.degrees(compass1.heading())) + "     ")
         #sys.stdout.flush()

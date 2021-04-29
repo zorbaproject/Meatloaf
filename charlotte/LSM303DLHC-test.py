@@ -18,7 +18,7 @@ def get_x_rotation(x,y,z):
     return math.degrees(radians)
 
 
-def get_heading(x,y,z):
+def OLDget_heading(x,y,z):
     if math.fabs(z) < 3:
         print("Tilting too much, heading measurement could be unaccurate")
     radians = math.atan2(y,x)
@@ -27,6 +27,25 @@ def get_heading(x,y,z):
         heading = heading + 360
     return heading
 
+def get_heading(x,y,z, declination):
+  headingRad = math.atan2(y, x)
+  (degrees, minutes) = declination
+  declDegrees = degrees
+  declMinutes = minutes
+  declinationD = (degrees + minutes / 60) * math.pi / 180
+  headingRad += declinationD
+
+  # Correct for reversed heading
+  if headingRad < 0:
+    headingRad += 2 * math.pi
+
+  # Check for wrap and compensate
+  elif headingRad > 2 * math.pi:
+    headingRad -= 2 * math.pi
+
+  # Convert to degrees from radians
+  headingDeg = headingRad * 180 / math.pi
+  return headingDeg
 
 def getLSM303_bus(busnum = 1):
 # Get I2C bus
@@ -147,6 +166,7 @@ while True:
 
   print("Rotation X (Side Tilt): "+str(get_x_rotation(xAccl,yAccl,zAccl)))
   print("Rotation Y (Frontal Inclination): "+str(get_y_rotation(xAccl,yAccl,zAccl)))
-  print("Heading: "+str(get_heading(xMag,yMag,zMag)))
+  declination = (4,3)
+  print("Heading: "+str(get_heading(xMag,yMag,zMag,declination)))
   print()
   time.sleep(1)
