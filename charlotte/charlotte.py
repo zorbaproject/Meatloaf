@@ -255,6 +255,7 @@ class getData(QThread):
         self.distancecommand = b'D'
         self.ledoncode = "OK!"  #This is the response to look for after turning on led
         self.distancecode = "m," #This is the response to look for after requesting a distance measurement
+        self.declination = (4,3)    #Degrees, minutes (https://www.magnetic-declination.com/#)
         #Cerco i sensori
         try:
             self.lsmbus = self.getLSM303_bus(1)
@@ -262,7 +263,7 @@ class getData(QThread):
             print("Unable to find LSM303DLH compass and inclinometer.")
             self.lsmbus = None
         try:
-            self.compass3 = hmc5883l(port = 3, gauss = 4.7, declination = (-2,5))
+            self.compass3 = hmc5883l(port = 3, gauss = 4.7, declination = (0,0))
         except:
             print("Unable to find HCM5883L compass and inclinometer.")
             self.compass3 = None
@@ -293,19 +294,24 @@ class getData(QThread):
                 xMag,yMag,zMag = self.getLSM303_heading(self.lsmbus)
                 self.requiredData["sideTilt"] = self.get_x_rotation(xAccl,yAccl,zAccl)
                 self.requiredData["frontalInclination"] = self.get_y_rotation(xAccl,yAccl,zAccl)
-                heading1 = self.get_heading(xMag,yMag,zMag)
+            except:
+                self.requiredData["sideTilt"] = 0.0
+                self.requiredData["frontalInclination"] = 0.0
+            try:
+                declination = (0,0)
+                heading1 = self.get_heading(xMag,yMag,zMag, declination)
                 heading3 = self.compass3.heading()
                 print("heading 0° incl: " + str(heading1))
                 print("heading 90° incl: " + str(heading3))
                 if bool(self.requiredData["frontalInclination"] > -45 and self.requiredData["frontalInclination"] < 45) or bool(self.requiredData["frontalInclination"] > 135 and self.requiredData["frontalInclination"] < -135):
                     self.requiredData["heading"] = heading1
                     print("0° choosen")
+                    self.myparent.w.statusbar.showMessage("Compass on bus 1 choosen: "+str(int(heading1))+ "; bus 3: "+str(int(heading3)))
                 else:
                     self.requiredData["heading"] = heading3
                     print("90° choosen")
+                    self.myparent.w.statusbar.showMessage("Compass on bus 1: "+str(int(heading1))+ "; bus 3 choosen: "+str(int(heading3)))
             except:
-                self.requiredData["sideTilt"] = 0.0
-                self.requiredData["frontalInclination"] = 0.0
                 self.requiredData["heading"] = 0.0
             try:
                 self.requiredData["distance"] = self.getDistance()
@@ -389,7 +395,7 @@ class getData(QThread):
         return math.degrees(radians)
 
 
-    def get_heading(self, x,y,z):
+    def get_headingOLD(self, x,y,z):
         if math.fabs(z) < 3:
             print("Tilting too much, heading measurement could be unaccurate")
         radians = math.atan2(y,x)
@@ -398,6 +404,25 @@ class getData(QThread):
             heading = heading + 360
         return heading
 
+    def get_heading(self, x,y,z, declination):
+      headingRad = math.atan2(y, x)
+      (degrees, minutes) = declination
+      declDegrees = degrees
+      declMinutes = minutes
+      declinationD = (degrees + minutes / 60) * math.pi / 180
+      headingRad += declinationD
+
+      # Correct for reversed heading
+      if headingRad < 0:
+        headingRad += 2 * math.pi
+
+      # Check for wrap and compensate
+      elif headingRad > 2 * math.pi:
+        headingRad -= 2 * math.pi
+
+      # Convert to degrees from radians
+      headingDeg = headingRad * 180 / math.pi
+      return headingDeg
 
     #
     def getLSM303_bus(self, busnum = 1):
