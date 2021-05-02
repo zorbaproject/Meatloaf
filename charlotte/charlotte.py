@@ -586,6 +586,8 @@ class MainWindow(QMainWindow):
         self.th = threading.Thread(target=self.puntofissoSave) #args=self.firstdistance
         self.th.start()
         self.currentzoom = 1
+        if isRPI:
+            self.w.dxfmesh.setChecked(False)
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
 
@@ -1480,6 +1482,8 @@ class MainWindow(QMainWindow):
         self.w.fulltable.setRowCount(0)
         for i in range(self.w.fulltable.columnCount()):
             self.w.fulltable.removeColumn(0)
+        if CSV == "":
+            return
         r = 0
         for row in CSV.split("\n"):
             if len(row.split(","))<2:
@@ -1528,6 +1532,9 @@ class MainWindow(QMainWindow):
         Cfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".json"
         Cfile = self.openJson(Cfilename)
         #self.savePersonalCFG()
+        self.w.fromP.setText("0")
+        self.w.toP.setText("1")
+        self.populateTable("")
         if len(Cfile)>0:
             self.w.cavename.setText(Cfile['caveName'])
             if len(Cfile['measurements'])>0:
@@ -1539,6 +1546,10 @@ class MainWindow(QMainWindow):
         self.myCaveFile = Cfile
 
     def openJson(self, fileName):
+        # TODO: if folder does not exist, create it
+        folder = os.path.abspath(os.path.dirname(fileName))
+        if not os.path.isdir(folder):
+            os.makedirs(folder)
         try:
             text_file = open(fileName, "r", encoding='utf-8')
             lines = text_file.read()
