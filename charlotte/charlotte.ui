@@ -28,19 +28,16 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_6">
           <item>
-           <widget class="QLineEdit" name="cavename"/>
+           <widget class="QComboBox" name="cavename">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QPushButton" name="selectcave">
             <property name="text">
              <string>Seleziona grotta</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="newcave">
-            <property name="text">
-             <string>Nuova grotta</string>
             </property>
            </widget>
           </item>

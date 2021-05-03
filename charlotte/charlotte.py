@@ -557,7 +557,7 @@ class MainWindow(QMainWindow):
         self.w.updatedrawing.clicked.connect(self.updatedrawing)
         self.w.zoom.valueChanged.connect(self.zoomDrawings)
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
-        self.w.cavename.textChanged.connect(self.cavenamechanged)
+        self.w.cavename.currentTextChanged.connect(self.cavenamechanged)
         self.requiredData = {}
         self.section = [0.0 for deg in range(360)]  #we expect to get one value for every degree
         self.walls = {}
@@ -592,7 +592,7 @@ class MainWindow(QMainWindow):
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
 
     def OpenSurvey(self):
-        self.mycfg['lastcave'] = self.w.cavename.text()
+        self.mycfg['lastcave'] = self.w.cavename.currentText()
         self.openFile()
         self.savePersonalCFG()
 
@@ -940,7 +940,7 @@ class MainWindow(QMainWindow):
         return cleanedname
 
     def saveFile(self, doDraw = True):
-        cleanedname = self.cleanName(self.w.cavename.text())
+        cleanedname = self.cleanName(self.w.cavename.currentText())
         self.mycfg["lastcave"] = cleanedname
         if self.mycfg["lastcave"] == "":
             print("You need to specify a name for this cave")
@@ -978,7 +978,7 @@ class MainWindow(QMainWindow):
             self.updatedrawing()
             
     def appendNewPoint(self, firstdistance = 0.0, doDraw = True):
-        cleanedname = self.cleanName(self.w.cavename.text())
+        cleanedname = self.cleanName(self.w.cavename.currentText())
         self.mycfg["lastcave"] = cleanedname
         if self.mycfg["lastcave"] == "":
             print("You need to specify a name for this cave")
@@ -1005,7 +1005,7 @@ class MainWindow(QMainWindow):
 
         walls = {'left':self.w.leftW.value(), 'right':self.w.rightW.value(), 'up':self.w.upW.value(), 'down':self.w.downW.value()}
 
-        Cfiletemplate = {'caveName':self.w.cavename.text(), 'measurements':[]}
+        Cfiletemplate = {'caveName':self.w.cavename.currentText(), 'measurements':[]}
         Cfile = self.openJson(Cfilename)
         print(Cfile)
         if len(Cfile)==0:
@@ -1055,7 +1055,7 @@ class MainWindow(QMainWindow):
         return csvtxt
 
     def json2CSX(self, Cfile):
-        cavename = self.w.cavename.text()
+        cavename = self.w.cavename.currentText()
         now = datetime.now()
         mydate = now.strftime("%d-%m-%Y")
         #header
@@ -1166,7 +1166,7 @@ class MainWindow(QMainWindow):
         self.w.spaccato.show()
         self.w.zoom.setValue(self.w.zoom.maximum())
         #files
-        cleanedname = self.cleanName(self.w.cavename.text())
+        cleanedname = self.cleanName(self.w.cavename.currentText())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
         Pfilename = cavefolder + "/" + cleanedname + "-pianta.svg"
         Sfilename = cavefolder + "/" + cleanedname + "-spaccato.svg"
@@ -1317,7 +1317,7 @@ class MainWindow(QMainWindow):
                         with mesh.edit_data() as mesh_data:
                             mesh_data.add_face([(aX,aY,aZ), (toX,toY,toZ), (bX,bY,bZ)])
                 mesh_data.optimize()  # optional, minimizes vertex count
-        cleanedname = self.cleanName(self.w.cavename.text())
+        cleanedname = self.cleanName(self.w.cavename.currentText())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
         Dfilename = cavefolder + "/" + cleanedname + ".dxf"
         doc.saveas(Dfilename)
@@ -1523,7 +1523,7 @@ class MainWindow(QMainWindow):
         #self.w.fulltable.cellChanged.connect(self.corpusCellChanged)
 
     def cavenamechanged(self):
-        cleanedname = self.cleanName(self.w.cavename.text())
+        cleanedname = self.cleanName(self.w.cavename.currentText())
         self.mycfg["lastcave"] = cleanedname
         #self.savePersonalCFG()
 
@@ -1536,7 +1536,7 @@ class MainWindow(QMainWindow):
         self.w.toP.setText("1")
         self.populateTable("")
         if len(Cfile)>0:
-            self.w.cavename.setText(Cfile['caveName'])
+            self.w.cavename.setEditText(Cfile['caveName'])
             if len(Cfile['measurements'])>0:
                 self.w.fromP.setText(Cfile['measurements'][-1]['from'])
                 self.w.toP.setText(Cfile['measurements'][-1]['to'])
@@ -1546,10 +1546,13 @@ class MainWindow(QMainWindow):
         self.myCaveFile = Cfile
 
     def openJson(self, fileName):
-        # TODO: if folder does not exist, create it
         folder = os.path.abspath(os.path.dirname(fileName))
         if not os.path.isdir(folder):
             os.makedirs(folder)
+        if not os.path.isfile(fileName):
+            text_file = open(fileName, "w", encoding='utf-8')
+            text_file.write("")
+            text_file.close()
         try:
             text_file = open(fileName, "r", encoding='utf-8')
             lines = text_file.read()
