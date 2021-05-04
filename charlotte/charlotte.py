@@ -586,6 +586,7 @@ class MainWindow(QMainWindow):
         self.th = threading.Thread(target=self.puntofissoSave) #args=self.firstdistance
         self.th.start()
         self.currentzoom = 1
+        self.listCaves()
         if isRPI:
             self.w.dxfmesh.setChecked(False)
 
@@ -1536,7 +1537,10 @@ class MainWindow(QMainWindow):
         self.w.toP.setText("1")
         self.populateTable("")
         if len(Cfile)>0:
-            self.w.cavename.setEditText(Cfile['caveName'])
+            print(Cfile['caveName'])
+            if self.w.cavename.findText(Cfile['caveName'])<0:
+                self.w.cavename.addItem(Cfile['caveName'])
+            self.w.cavename.setCurrentText(Cfile['caveName'])
             if len(Cfile['measurements'])>0:
                 self.w.fromP.setText(Cfile['measurements'][-1]['from'])
                 self.w.toP.setText(Cfile['measurements'][-1]['to'])
@@ -1561,6 +1565,19 @@ class MainWindow(QMainWindow):
             return out
         except:
             return {}
+
+    def listCaves(self):
+        self.w.cavename.clear()
+        for cleanedname in os.listdir(self.mycfg["outputfolder"]):
+            Cfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".json"
+            if os.path.isfile(Cfilename):
+                self.w.cavename.addItem(cleanedname)
+        try:
+            if self.w.cavename.findText(self.myCaveFile['caveName'])<0:
+                self.w.cavename.addItem(self.myCaveFile['caveName'])
+            self.w.cavename.setCurrentText(self.myCaveFile['caveName'])
+        except:
+            pass
 
     def SaveSurvey(self):
         if self.w.save.isChecked():
