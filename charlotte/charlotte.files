@@ -6,6 +6,7 @@ charlotte.ui
 charlotte.py
 README.md
 hmc5883l.py
+lidar2d-servoserial.ino
 lsm303dlhTEST.py
 install.sh
 autologin.sh

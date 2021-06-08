@@ -56,6 +56,7 @@ from PySide2.QtGui import QPolygonF
 from PySide2.QtGui import QPen
 from PySide2.QtGui import QColor
 from PySide2.QtGui import QTransform
+from PySide2.QtGui import QFont
 from PySide2.QtCore import QPointF
 
 import threading
@@ -824,6 +825,7 @@ class MainWindow(QMainWindow):
             up = self.calculate3DCoord(u, 270, myCenter, heading, incl, sideTilt)
             pcoords = {"pos":myCenter,"left":left,"right":right,"up":up,"down":down}
         else:
+            print("Unable to getFromPointData for " +str(pointname))
             pcoords = {"pos":[myX,myY,myZ],"left":[myX,myY,myZ],"right":[myX,myY,myZ],"up":[myX,myY,myZ],"down":[myX,myY,myZ]}
         return pcoords
 
@@ -1094,6 +1096,7 @@ class MainWindow(QMainWindow):
         #scenes
         spaccato = QGraphicsScene()
         pianta = QGraphicsScene()
+        labelFont = QFont("Arial", 2)
 
         for branch in self.branches:
             Ppoligon = QPainterPath()
@@ -1105,6 +1108,7 @@ class MainWindow(QMainWindow):
             up = []
             down = []
             Ppath.moveTo(QPointF(0, 0))
+            #tmpScnText = pianta.addText(str("0"), labelFont)
             Spath.moveTo(QPointF(0, 0))
             for point in branch:
                 #print(point)
@@ -1113,7 +1117,9 @@ class MainWindow(QMainWindow):
                 myZ = self.myCoordinates[point]["pos"][2]
                 Ppath.lineTo(QPointF(myX, -myY))
                 Spath.lineTo(QPointF(myY, -myZ))
-                #print(Ppath.currentPosition())
+                #tmpScnText = pianta.addText(str(point), labelFont)
+                #tmpScnText.setPos(QPointF(myX, -myY))
+                # #print(Ppath.currentPosition())
                 lX = self.myCoordinates[point]["left"][0]
                 lY = self.myCoordinates[point]["left"][1]
                 lZ = self.myCoordinates[point]["left"][2]
