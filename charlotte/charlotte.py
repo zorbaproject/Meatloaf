@@ -86,7 +86,6 @@ class getLidar(QThread):
         # "dmesg | grep ': cp210x converter detected' |sed 's/\[.*\] cp210x \(.*\):.*/\1/g' | tail -n1"
         print("Lidar Address: "+self.lidarAddress)
 
-
     def __del__(self):
         print("Shutting down thread")
 
@@ -241,6 +240,7 @@ class hmc5883l:
                "Heading: " + self.degrees(self.heading()) + "\n"
 
 class getData(QThread):
+    #GotScan = Signal(list)
     #######################################Here we read temperature, pressure, distance, and 3-axis position
     def __init__(self, parent, mydata = ""):
         QThread.__init__(self)
@@ -274,9 +274,37 @@ class getData(QThread):
             self.tempsensor = w1thermsensor.W1ThermSensor()
         except:
             self.tempsensor = None
+        #LiDAR
+        self.scantime = 2
+        self.lidarport = self.findYDLidarX4(["/dev/ttyUSB0", "/dev/ttyUSB1"])
+        print("Found Lidar on " + str(self.lidarport))
+        self.lidarAddress = self.findUSBaddress("cp210x")
+        # "dmesg | grep ': cp210x converter detected' |sed 's/\[.*\] cp210x \(.*\):.*/\1/g' | tail -n1"
+        print("Lidar Address: "+self.lidarAddress)
 
     def __del__(self):
         print("Shutting down thread")
+
+    def findUSBaddress(self, myconverter, mydriver = ""):
+        addr = ""
+        if mydriver == "":
+            mydriver = myconverter
+        os.system("dmesg > /tmp/dmesg.log")
+        text_file = open("/tmp/dmesg.log", "r")
+        mylines = text_file.read().split("\n")
+        text_file.close()
+        for myline in mylines:
+            if ': '+myconverter+' converter detected' in myline:
+                addr = re.sub('\[.*\] '+mydriver+' (.*):.*','\g<1>', myline)
+        return addr
+
+    def reconnectUSB(self, myaddress, mydriver):
+        print("Trying to reconnect USB device "+myaddress)
+        os.system("sudo sh -c 'echo -n \""+myaddress+"\" > /sys/bus/usb/drivers/"+mydriver+"/unbind'")
+        sleep(1)
+        #sudo sh -c 'ls -hal /root/ > /root/test.out'
+        os.system("sudo sh -c 'echo -n \""+myaddress+"\" > /sys/bus/usb/drivers/"+mydriver+"/bind'")
+        sleep(1)
 
     def run(self):
         global toSleep
@@ -285,6 +313,10 @@ class getData(QThread):
                 self.stopRangefinder()
                 sleep(toSleep)
                 continue
+            if self.lidarport != None:
+                myscan = self.scanYDLidarX4()
+                self.myparent.LidarScanDone(myscan)
+                #self.GotScan.emit(myscan)
             self.requiredData = {}
             try:
                 self.requiredData["temperature"] = self.readTemp()
@@ -321,6 +353,42 @@ class getData(QThread):
             self.myparent.setRequiredData(self.requiredData)
             sleep(toSleep)
         return
+
+    def findYDLidarX4(self, ttys = ["/dev/ttyUSB0", "/dev/ttyUSB1"]):
+        print("Searching for Lidar on ")
+        try:
+            for tmptty in ttys:
+                print(tmptty)
+                Obj = PyLidar3.YdLidarX4(tmptty) #PyLidar3.your_version_of_lidar(port,chunk_size)
+                if(Obj.Connect()):
+                    print(Obj.GetDeviceInfo())
+                    Obj.Disconnect()
+                    return tmptty
+            t = 0/0
+        except:
+            return None
+
+    def scanYDLidarX4(self):
+        myscan = [0.0 for deg in range(360)] #we have one value for every angle
+        Obj = PyLidar3.YdLidarX4(self.lidarport)
+        if(Obj.Connect()):
+            gen = Obj.StartScanning()
+            t = time.time() # start time
+            scanlist = []
+            while (time.time() - t) < self.scantime:
+                scanlist.append(next(gen))
+                time.sleep(0.5)
+            Obj.StopScanning()
+            Obj.Disconnect()
+            for i in range(360):
+                sum = 0.0
+                for tmpscan in scanlist:
+                    sum = sum +tmpscan[i]
+                myscan[i] = (float(sum)/len(scanlist))/1000.0
+            #print(len(scanlist))
+        else:
+            print("Error connecting to device")
+        return myscan
     
     def readTemp(self):
         #Leggo la temperatura
@@ -582,7 +650,7 @@ class MainWindow(QMainWindow):
         if isRPI:
             self.getDataThread = getData(self)
             self.getDataThread.start()
-        self.startLidarScan()
+        #self.startLidarScan()
         self.firstdistance = 0.0
         self.th = threading.Thread(target=self.puntofissoSave) #args=self.firstdistance
         self.th.start()
@@ -1607,7 +1675,7 @@ class MainWindow(QMainWindow):
         active = True
         firstdistance = float(self.w.distance.value())
         stopped = False
-        toWait = 5
+        toWait = 5 #self.w.autoscanSleep.value()
         toSleep = 0.1
         firstrun = True
         while active:
