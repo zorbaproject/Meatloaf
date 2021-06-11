@@ -66,100 +66,6 @@ print("All modules imported")
 toSleep = 1
 samples = 5 #number of samples to take for calculating average
 
-class getLidar(QThread):
-    global isRPI
-    GotScan = Signal(list)
-
-    def __init__(self, parent):
-        QThread.__init__(self)
-        self.myparent = parent
-        self.setTerminationEnabled(True)
-        if not isRPI:
-            self.exit()
-        # We just keep this in case we need to drive a servo
-        #GPIO.setmode(GPIO.BCM)
-        #GPIO.setup(self.relaypin, GPIO.OUT)
-        self.scantime = 2
-        self.lidarport = self.findYDLidarX4(["/dev/ttyUSB0", "/dev/ttyUSB1"])
-        print("Found Lidar on " + str(self.lidarport))
-        self.lidarAddress = self.findUSBaddress("cp210x")
-        # "dmesg | grep ': cp210x converter detected' |sed 's/\[.*\] cp210x \(.*\):.*/\1/g' | tail -n1"
-        print("Lidar Address: "+self.lidarAddress)
-
-    def __del__(self):
-        print("Shutting down thread")
-
-    def findUSBaddress(self, myconverter, mydriver = ""):
-        addr = ""
-        if mydriver == "":
-            mydriver = myconverter
-        os.system("dmesg > /tmp/dmesg.log")
-        text_file = open("/tmp/dmesg.log", "r")
-        mylines = text_file.read().split("\n")
-        text_file.close()
-        for myline in mylines:
-            if ': '+myconverter+' converter detected' in myline:
-                addr = re.sub('\[.*\] '+mydriver+' (.*):.*','\g<1>', myline)
-        return addr
-
-    def reconnectUSB(self, myaddress, mydriver):
-        print("Trying to reconnect USB device "+myaddress)
-        os.system("sudo sh -c 'echo -n \""+myaddress+"\" > /sys/bus/usb/drivers/"+mydriver+"/unbind'")
-        sleep(1)
-        #sudo sh -c 'ls -hal /root/ > /root/test.out'
-        os.system("sudo sh -c 'echo -n \""+myaddress+"\" > /sys/bus/usb/drivers/"+mydriver+"/bind'")
-        sleep(1)
-
-    def run(self):
-        global toSleep
-        while True:
-            if self.myparent.w.manualMode.isChecked() or self.lidarport == None:
-                #self.stopRangefinder()
-                sleep(toSleep)
-                continue
-            myscan = self.scanYDLidarX4()
-            #self.myparent.LidarScanDone(myscan)
-            self.GotScan.emit(myscan)
-            sleep(1)
-            #self.drawSection()
-        return
-
-    def findYDLidarX4(self, ttys = ["/dev/ttyUSB0", "/dev/ttyUSB1"]):
-        print("Searching for Lidar on ")
-        try:
-            for tmptty in ttys:
-                print(tmptty)
-                Obj = PyLidar3.YdLidarX4(tmptty) #PyLidar3.your_version_of_lidar(port,chunk_size)
-                if(Obj.Connect()):
-                    print(Obj.GetDeviceInfo())
-                    Obj.Disconnect()
-                    return tmptty
-            t = 0/0
-        except:
-            return None
-
-    def scanYDLidarX4(self):
-        myscan = [0.0 for deg in range(360)] #we have one value for every angle
-        Obj = PyLidar3.YdLidarX4(self.lidarport)
-        if(Obj.Connect()):
-            gen = Obj.StartScanning()
-            t = time.time() # start time
-            scanlist = []
-            while (time.time() - t) < self.scantime:
-                scanlist.append(next(gen))
-                time.sleep(0.5)
-            Obj.StopScanning()
-            Obj.Disconnect()
-            for i in range(360):
-                sum = 0.0
-                for tmpscan in scanlist:
-                    sum = sum +tmpscan[i]
-                myscan[i] = (float(sum)/len(scanlist))/1000.0
-            #print(len(scanlist))
-        else:
-            print("Error connecting to device")
-        return myscan
-
 class hmc5883l:
 
     __scales = {
@@ -240,7 +146,7 @@ class hmc5883l:
                "Heading: " + self.degrees(self.heading()) + "\n"
 
 class getData(QThread):
-    #GotScan = Signal(list)
+    GotScan = Signal(list)
     #######################################Here we read temperature, pressure, distance, and 3-axis position
     def __init__(self, parent, mydata = ""):
         QThread.__init__(self)
@@ -250,6 +156,7 @@ class getData(QThread):
             self.exit()
         #Data for the rangefinder
         self.rangefinderTTY = '/dev/ttyUSB0'
+        plausibleTTYs = ['/dev/ttyUSB0','/dev/ttyUSB1']
         self.RFbaudrate = 19200
         self.ledoffcommand = b'C'
         self.ledoncommand = b'O'
@@ -268,7 +175,7 @@ class getData(QThread):
         except:
             print("Unable to find HCM5883L compass and inclinometer.")
             self.compass3 = None
-        self.rangefinderTTY = self.searchRangefinder(['/dev/ttyUSB0','/dev/ttyUSB1'])
+        self.rangefinderTTY = self.searchRangefinder(plausibleTTYs)
         print("Rangefinder: " + str(self.rangefinderTTY))
         try:
             self.tempsensor = w1thermsensor.W1ThermSensor()
@@ -276,11 +183,17 @@ class getData(QThread):
             self.tempsensor = None
         #LiDAR
         self.scantime = 2
-        self.lidarport = self.findYDLidarX4(["/dev/ttyUSB0", "/dev/ttyUSB1"])
+        if self.rangefinderTTY != None:
+            plausibleTTYs.remove(self.rangefinderTTY)
+        self.lidarport = self.findYDLidarX4(plausibleTTYs)
+        #self.lidarport = "/dev/ttyUSB1"
+        if self.lidarport == None and len(plausibleTTYs)>0:
+            self.lidarport = plausibleTTYs[-1]
         print("Found Lidar on " + str(self.lidarport))
         self.lidarAddress = self.findUSBaddress("cp210x")
         # "dmesg | grep ': cp210x converter detected' |sed 's/\[.*\] cp210x \(.*\):.*/\1/g' | tail -n1"
         print("Lidar Address: "+self.lidarAddress)
+
 
     def __del__(self):
         print("Shutting down thread")
@@ -315,8 +228,8 @@ class getData(QThread):
                 continue
             if self.lidarport != None:
                 myscan = self.scanYDLidarX4()
-                self.myparent.LidarScanDone(myscan)
-                #self.GotScan.emit(myscan)
+                #self.myparent.LidarScanDone(myscan)
+                self.GotScan.emit(myscan)
             self.requiredData = {}
             try:
                 self.requiredData["temperature"] = self.readTemp()
@@ -355,7 +268,7 @@ class getData(QThread):
         return
 
     def findYDLidarX4(self, ttys = ["/dev/ttyUSB0", "/dev/ttyUSB1"]):
-        print("Searching for Lidar on ")
+        print("Searching for Lidar on: ")
         try:
             for tmptty in ttys:
                 print(tmptty)
@@ -640,15 +553,17 @@ class MainWindow(QMainWindow):
         self.w.pianta.scale(1,-1)
         self.w.spaccato.scale(1,-1)
         self.w.section.scale(1,-1)
-        self.w.section.scale(20,20)
+        self.w.section.scale(40,40)
         self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down"]
         print("UI loaded")
         QApplication.processEvents()
         self.loadPersonalCFG()
         if os.path.isfile(self.mycfg['lastcave']) and self.mycfg['startfromlastcave']=='True':
             self.openFile()
+        self.sezioneScene = QGraphicsScene()
         if isRPI:
             self.getDataThread = getData(self)
+            self.getDataThread.GotScan.connect(self.LidarScanDone)
             self.getDataThread.start()
         #self.startLidarScan()
         self.firstdistance = 0.0
@@ -1262,11 +1177,11 @@ class MainWindow(QMainWindow):
             sideTilt = mysideTilt
         #print(mysection)
         myCenter = [0.0, 0.0, 0.0]
-        secCoords = self.calculateSectionCoord(section, myCenter, 0.0, 0.0, sideTilt)
-        if len(secCoords) <360:
-            return
         sezione = QGraphicsScene()
-        PennaBordo = QPen(Qt.black, 0.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin) #Qt.Dashline https://doc.qt.io/qtforpython/PySide2/QtGui/QPen.html
+        secCoords = self.calculateSectionCoord(section, myCenter, 0.0, 0.0, sideTilt)
+        if len(secCoords) <360 or self.isSectionNull(section):
+            return sezione
+        PennaBordo = QPen(Qt.black, 0.2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin) #Qt.Dashline https://doc.qt.io/qtforpython/PySide2/QtGui/QPen.html
         Spoligon = QPainterPath()
         Spoligon.moveTo(QPointF(secCoords[0][0], secCoords[0][2]))
         for angle in range(1,len(secCoords)):
@@ -1277,12 +1192,22 @@ class MainWindow(QMainWindow):
         c2 = QPointF(secCoords[0][0], secCoords[0][2])
         Spoligon.cubicTo(c1, c2, QPointF(secCoords[0][0], secCoords[0][2]))
         sezione.addPath(Spoligon, PennaBordo)
+        self.sezioneScene = sezione
         if mysection == None:
-            self.w.section.setScene(sezione)
+            self.w.section.setScene(self.sezioneScene)
             self.w.section.show()
             #QApplication.processEvents()
+            #print(section)
         else:
             return sezione
+
+    def isSectionNull(self, mysection):
+        val = True
+        for d in mysection:
+            if d > 0.0:
+                val = False
+                break
+        return val
 
     def saveSvg(self, scene, fileName, title = ""):
         generator = QSvgGenerator()
