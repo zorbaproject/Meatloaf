@@ -941,7 +941,7 @@ class MainWindow(QMainWindow):
         Xfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".csx"
         print("Saving to " + Cfilename)
         
-        cfiletxt = json.dumps(self.myCaveFile)
+        cfiletxt = json.dumps(self.myCaveFile).replace(",",",\n")
         text_file = open(Cfilename, "w", encoding='utf-8')
         text_file.write(cfiletxt)
         text_file.close()
