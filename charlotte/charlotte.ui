@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>624</width>
-    <height>423</height>
+    <height>461</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -222,6 +222,13 @@
             </item>
             <item>
              <layout class="QGridLayout" name="gridLayout_2">
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_18">
+                <property name="text">
+                 <string>Latitudine</string>
+                </property>
+               </widget>
+              </item>
               <item row="0" column="1">
                <widget class="QDoubleSpinBox" name="pressure"/>
               </item>
@@ -242,7 +249,27 @@
                 </property>
                </widget>
               </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_19">
+                <property name="text">
+                 <string>Longitudine</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QDoubleSpinBox" name="latitude"/>
+              </item>
+              <item row="3" column="1">
+               <widget class="QDoubleSpinBox" name="longitude"/>
+              </item>
              </layout>
+            </item>
+            <item>
+             <widget class="QPushButton" name="readGPS">
+              <property name="text">
+               <string>Leggi GPS</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -555,6 +582,20 @@ Permette di realizzare rilievi topografici vettoriali delle cavità naturali e a
           </property>
           <property name="wordWrap">
            <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="deviceinfo">
+          <property name="text">
+           <string>Informazioni sul dispositivo:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="showDeviceInfo">
+          <property name="text">
+           <string>Aggiorna informazioni sul dispositivo</string>
           </property>
          </widget>
         </item>

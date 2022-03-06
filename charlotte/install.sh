@@ -96,6 +96,10 @@ echo "Options +Indexes" >> "/home/$(whoami)/charlottedata/.htaccess"
 sudo mv /var/www/html /var/www/htmlOLD
 sudo ln -s "/home/$(whoami)/charlottedata" /var/www/html
 
+#rtc
+sudo bash -c 'echo "rtc-ds1307" >> /etc/modules'
+sudo cp rc.local /etc/rc.local
+
 #hostname
 sudo hostname charlotte
 

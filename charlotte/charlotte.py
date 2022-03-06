@@ -10,6 +10,7 @@ import re
 from datetime import datetime
 import numpy as np
 
+import shutil
 
 import ezdxf
 
@@ -537,6 +538,7 @@ class MainWindow(QMainWindow):
         self.w.deletefixrow.clicked.connect(self.deletefixrow)
         self.w.savetable.clicked.connect(self.savetable)
         self.w.updatedrawing.clicked.connect(self.updatedrawing)
+        self.w.showDeviceInfo.clicked.connect(self.showDeviceInfo)
         self.w.zoom.valueChanged.connect(self.zoomDrawings)
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
         self.w.cavename.currentTextChanged.connect(self.cavenamechanged)
@@ -554,7 +556,7 @@ class MainWindow(QMainWindow):
         self.w.spaccato.scale(1,-1)
         self.w.section.scale(1,-1)
         self.w.section.scale(40,40)
-        self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down"]
+        self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down", "latitude", "longitude"]
         print("UI loaded")
         QApplication.processEvents()
         self.loadPersonalCFG()
@@ -573,8 +575,19 @@ class MainWindow(QMainWindow):
         self.listCaves()
         if isRPI:
             self.w.dxfmesh.setChecked(False)
+        self.showDeviceInfo()
+
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
+
+    def showDeviceInfo(self):
+        fulltext = "Informazioni sul dispositivo:\n"
+        os.system("ip -br a > /tmp/devinfo.txt")
+        os.system("date >> /tmp/devinfo.txt")
+        text_file = open("/tmp/devinfo.txt", "r", encoding='utf-8')
+        lines = text_file.read()
+        text_file.close()
+        self.w.deviceinfo.setText(fulltext+lines)
 
     def OpenSurvey(self):
         self.mycfg['lastcave'] = self.w.cavename.currentText()
@@ -941,6 +954,12 @@ class MainWindow(QMainWindow):
         Xfilename = self.mycfg["outputfolder"] + "/" + cleanedname + "/" + cleanedname + ".csx"
         print("Saving to " + Cfilename)
         
+        try:
+            now = datetime.now()
+            nowts = now.strftime("%d%m%Y%H%M%S")
+            shutil.copy(Cfilename, Cfilename+"-bck"+nowts)
+        except:
+            pass
         cfiletxt = json.dumps(self.myCaveFile).replace(",",",\n")
         text_file = open(Cfilename, "w", encoding='utf-8')
         text_file.write(cfiletxt)
@@ -982,6 +1001,13 @@ class MainWindow(QMainWindow):
         dist = float(self.w.distance.value())
         if firstdistance > 0.0:
             dist = firstdistance - dist
+        #
+        try:
+            lat = self.w.latitude.value()
+            lon = self.w.latitude.value()
+        except:
+            lat = 0.0
+            lon = 0.0
         requiredData = {
         'sideTilt':self.w.sideTilt.value(),
         'frontalInclination':self.w.frontalInclination.value(),
@@ -1003,6 +1029,7 @@ class MainWindow(QMainWindow):
         'timestamp': now.strftime("%d/%m/%Y %H:%M:%S"),
         'from': self.w.fromP.text(),
         'to': self.w.toP.text(),
+        'GPS':{'latitude': lat, 'longitude': lon},
         'topographic': requiredData,
         'walls': walls,
         'section': self.section,
@@ -1029,6 +1056,9 @@ class MainWindow(QMainWindow):
             csvtxt = csvtxt + str(row["walls"]['right']) + ","
             csvtxt = csvtxt + str(row["walls"]['up']) + ","
             csvtxt = csvtxt + str(row["walls"]['down']) + ","
+
+            csvtxt = csvtxt + str(row["GPS"]['latitude']) + ","
+            csvtxt = csvtxt + str(row["GPS"]['longitude']) + ","
 
             #csvtxt = csvtxt + str(row["ambient"]['temperature']) + ","
             #csvtxt = csvtxt + str(row["ambient"]['pressure']) + ","
@@ -1475,6 +1505,8 @@ class MainWindow(QMainWindow):
             self.myCaveFile['measurements'][r]['walls']['right'] = float(self.w.fulltable.item(r,7).text())
             self.myCaveFile['measurements'][r]['walls']['up'] = float(self.w.fulltable.item(r,8).text())
             self.myCaveFile['measurements'][r]['walls']['down'] = float(self.w.fulltable.item(r,9).text())
+            self.myCaveFile['measurements'][r]['GPS']['latitude'] = float(self.w.fulltable.item(r,10).text())
+            self.myCaveFile['measurements'][r]['GPS']['longitude'] = float(self.w.fulltable.item(r,11).text())
         self.saveFile()
 
     def populateTable(self, CSV):

@@ -11,3 +11,5 @@ lsm303dlhTEST.py
 install.sh
 autologin.sh
 accesspoint.sh
+rc.local
+set-rtc.sh

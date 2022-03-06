@@ -46,6 +46,9 @@ dtparam=i2c_arm=on
 dtparam=spi=on
 
 dtoverlay=i2c-gpio,bus=3,i2c_gpio_delay_us=2,i2c_gpio_sda=17,i2c_gpio_scl=27
+dtoverlay=i2c-gpio,bus=4,i2c_gpio_delay_us=2,i2c_gpio_sda=23,i2c_gpio_scl=24
+
+dtoverlay=i2c-rtc,ds3231
 
 # Uncomment this to enable infrared communication.
 #dtoverlay=gpio-ir,gpio_pin=17
