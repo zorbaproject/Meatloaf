@@ -1146,12 +1146,14 @@ class MainWindow(QMainWindow):
                 Ppath.lineTo(QPointF(myX, -myY))
                 SYZpath.lineTo(QPointF(myY, -myZ))
                 SXZpath.lineTo(QPointF(myX, -myZ))
+                #Labels
+                lblMargin = 4
                 tmpPScnText = pianta.addText(str(point), labelFont)
-                tmpPScnText.setPos(QPointF(myX, -myY))
+                tmpPScnText.setPos(QPointF((myX-lblMargin), -(myY+lblMargin)))
                 tmpSYZScnText = spaccatoYZ.addText(str(point), labelFont)
-                tmpSYZScnText.setPos(QPointF(myY, -myZ))
+                tmpSYZScnText.setPos(QPointF((myY-lblMargin), -(myZ+lblMargin)))
                 tmpSXZScnText = spaccatoXZ.addText(str(point), labelFont)
-                tmpSXZScnText.setPos(QPointF(myX, -myZ))
+                tmpSXZScnText.setPos(QPointF((myX-lblMargin), -(myZ+lblMargin)))
                 # #print(Ppath.currentPosition())
                 lX = self.myCoordinates[point]["left"][0]
                 lY = self.myCoordinates[point]["left"][1]
