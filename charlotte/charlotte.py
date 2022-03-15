@@ -552,9 +552,12 @@ class MainWindow(QMainWindow):
         self.mycfg = {}
         self.newCave()
         #Take note that Y axis on a graphicsview is flipped
-        self.w.pianta.scale(1,-1)
-        self.w.spaccato.scale(1,-1)
-        self.w.section.scale(1,-1)
+        #self.w.pianta.scale(1,-1)
+        #self.w.spaccato.scale(1,-1)
+        #self.w.section.scale(1,-1)
+        self.w.pianta.scale(1,1)
+        self.w.spaccato.scale(1,1)
+        self.w.section.scale(1,1)
         self.w.section.scale(40,40)
         self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down", "latitude", "longitude"]
         print("UI loaded")
@@ -1107,31 +1110,48 @@ class MainWindow(QMainWindow):
     def Json2Svg(self, Cfile):
         print("Drawing SVG")
         #scenes
-        spaccato = QGraphicsScene()
+        spaccatoXZ = QGraphicsScene()
+        spaccatoYZ = QGraphicsScene()
         pianta = QGraphicsScene()
-        labelFont = QFont("Arial", 2)
+        labelFont = QFont("Arial", 1)
 
         for branch in self.branches:
             Ppoligon = QPainterPath()
-            Spoligon = QPainterPath()
+            SYZpoligon = QPainterPath()
+            SXZpoligon = QPainterPath()
             Ppath = QPainterPath()
-            Spath = QPainterPath()
+            SYZpath = QPainterPath()
+            SXZpath = QPainterPath()
             left = []
             right = []
             up = []
             down = []
             Ppath.moveTo(QPointF(0, 0))
+            SYZpath.moveTo(QPointF(0, 0))
+            SXZpath.moveTo(QPointF(0, 0))
             #tmpScnText = pianta.addText(str("0"), labelFont)
-            Spath.moveTo(QPointF(0, 0))
-            for point in branch:
+            for branchEl in range(len(branch)):
+                point = branch[branchEl]
                 #print(point)
                 myX = self.myCoordinates[point]["pos"][0]
                 myY = self.myCoordinates[point]["pos"][1]
                 myZ = self.myCoordinates[point]["pos"][2]
+                if branchEl == 0:
+                    print("First point for this branch: "+ str(point))
+                    Ppath.moveTo(QPointF(myX, -myY))
+                    SYZpath.moveTo(QPointF(myY, -myZ))
+                    SXZpath.moveTo(QPointF(myX, -myZ))
+                if branchEl == len(branch)-1:
+                    print("Last point for this branch: "+ str(point))
                 Ppath.lineTo(QPointF(myX, -myY))
-                Spath.lineTo(QPointF(myY, -myZ))
-                #tmpScnText = pianta.addText(str(point), labelFont)
-                #tmpScnText.setPos(QPointF(myX, -myY))
+                SYZpath.lineTo(QPointF(myY, -myZ))
+                SXZpath.lineTo(QPointF(myX, -myZ))
+                tmpPScnText = pianta.addText(str(point), labelFont)
+                tmpPScnText.setPos(QPointF(myX, -myY))
+                tmpSYZScnText = spaccatoYZ.addText(str(point), labelFont)
+                tmpSYZScnText.setPos(QPointF(myY, -myZ))
+                tmpSXZScnText = spaccatoXZ.addText(str(point), labelFont)
+                tmpSXZScnText.setPos(QPointF(myX, -myZ))
                 # #print(Ppath.currentPosition())
                 lX = self.myCoordinates[point]["left"][0]
                 lY = self.myCoordinates[point]["left"][1]
@@ -1145,43 +1165,53 @@ class MainWindow(QMainWindow):
                 dX = self.myCoordinates[point]["down"][0]
                 dY = self.myCoordinates[point]["down"][1]
                 dZ = self.myCoordinates[point]["down"][2]
-                left.append([lX,-lY])
-                right.append([rX,-rY])
-                up.append([uY,-uZ])
-                down.append([dY,-dZ])
-            Ppoligon.moveTo(QPointF(left[0][0], left[0][1]))
-            Spoligon.moveTo(QPointF(up[0][0], up[0][1]))
+                left.append([lX,lY,lZ])
+                right.append([rX,rY,lZ])
+                up.append([uX,uY,uZ])
+                down.append([dX,dY,dZ])
+            Ppoligon.moveTo(QPointF(left[0][0], -left[0][1]))
             for p in left:
                 c1 = Ppoligon.currentPosition()
-                c2 = QPointF(p[0], p[1])
-                Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
+                c2 = QPointF(p[0], -p[1])
+                Ppoligon.cubicTo(c1, c2, QPointF(p[0], -p[1]))
             right.reverse()
             right.append(left[0]) #close the line
             right = right[1:]
             for p in right:
                 c1 = Ppoligon.currentPosition()
-                c2 = QPointF(p[0], p[1])
-                Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
+                c2 = QPointF(p[0], -p[1])
+                Ppoligon.cubicTo(c1, c2, QPointF(p[0], -p[1]))
+            SYZpoligon.moveTo(QPointF(up[0][1], -up[0][2]))
+            SXZpoligon.moveTo(QPointF(up[0][0], -up[0][2]))
             for p in up:
-                c1 = Spoligon.currentPosition()
-                c2 = QPointF(p[0], p[1])
-                Spoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
+                c1 = SYZpoligon.currentPosition()
+                c2 = QPointF(p[1], -p[2])
+                SYZpoligon.cubicTo(c1, c2, QPointF(p[1], -p[2]))
+                c1 = SXZpoligon.currentPosition()
+                c2 = QPointF(p[0], -p[2])
+                SXZpoligon.cubicTo(c1, c2, QPointF(p[0], -p[2]))
             down.reverse()
             down.append(up[0]) #close the line
             down = down[1:]
             for p in down:
-                c1 = Spoligon.currentPosition()
-                c2 = QPointF(p[0], p[1])
-                Spoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
+                c1 = SYZpoligon.currentPosition()
+                c2 = QPointF(p[1], -p[2])
+                SYZpoligon.cubicTo(c1, c2, QPointF(p[1], -p[2]))
+                c1 = SXZpoligon.currentPosition()
+                c2 = QPointF(p[0], -p[2])
+                SXZpoligon.cubicTo(c1, c2, QPointF(p[0], -p[2]))
             PennaBordo = QPen(Qt.black, 0.1, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin) #Qt.Dashline https://doc.qt.io/qtforpython/PySide2/QtGui/QPen.html
             pianta.addPath(Ppoligon, PennaBordo)
-            spaccato.addPath(Spoligon, PennaBordo)
+            spaccatoYZ.addPath(SYZpoligon, PennaBordo)
+            spaccatoXZ.addPath(SXZpoligon, PennaBordo)
             PennaPoligonale = QPen(Qt.red, 0.1)
             pianta.addPath(Ppath, PennaPoligonale)
-            spaccato.addPath(Spath, PennaPoligonale)
+            spaccatoYZ.addPath(SYZpath, PennaPoligonale)
+            spaccatoXZ.addPath(SXZpath, PennaPoligonale)
         #show in graphicsview
         self.w.pianta.setScene(pianta)
-        self.w.spaccato.setScene(spaccato)
+        #TODO: aggiungere opzione in gui per scegliere XZ o YZ
+        self.w.spaccato.setScene(spaccatoYZ)
         self.w.pianta.show()
         self.w.spaccato.show()
         self.w.zoom.setValue(self.w.zoom.maximum())
@@ -1189,9 +1219,11 @@ class MainWindow(QMainWindow):
         cleanedname = self.cleanName(self.w.cavename.currentText())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
         Pfilename = cavefolder + "/" + cleanedname + "-pianta.svg"
-        Sfilename = cavefolder + "/" + cleanedname + "-spaccato.svg"
+        SYZfilename = cavefolder + "/" + cleanedname + "-spaccatoYZ.svg"
+        SXZfilename = cavefolder + "/" + cleanedname + "-spaccatoXZ.svg"
         self.saveSvg(pianta, Pfilename, "Pianta")
-        self.saveSvg(spaccato, Sfilename, "Spaccato")
+        self.saveSvg(spaccatoYZ, SYZfilename, "Spaccato")
+        self.saveSvg(spaccatoXZ, SXZfilename, "Spaccato")
 
     def drawSection(self, mysection = None, mysideTilt = None):
         if mysection == None:
@@ -1246,9 +1278,9 @@ class MainWindow(QMainWindow):
         generator.setTitle(title);
         generator.setDescription("Created with Charlotte Cave Surveing Software");
         painter = QPainter( generator )
-        transform = QTransform().scale(1, -1) #we need a qtransform because in a qgraphicscene y-axis is flipped
-        transform.translate(0, -scene.height())
-        painter.setTransform(transform)
+        #transform = QTransform().scale(1, -1) #we need a qtransform because in a qgraphicscene y-axis is flipped
+        #transform.translate(0, -scene.height())
+        #painter.setTransform(transform)
         scene.render( painter )
         painter.end()
 
@@ -1425,25 +1457,29 @@ class MainWindow(QMainWindow):
         while startpoint != "":
             if r >= len(rami):
                 rami.append([])
+            if len(rami[r]) == 0:   #just started a new branch, look for its first from point (if exists)
+                for row in Cfile["measurements"]:
+                    Tpoint = row["to"]
+                    Fpoint = row["from"]
+                    if Tpoint==startpoint and not self.checkPointBranched(rami, Tpoint):
+                        rami[r].append(Fpoint)
             found = False
             for row in Cfile["measurements"]:
                 Tpoint = row["to"]
                 Fpoint = row["from"]
-                #we might already have considered this frompoint but coupled with another Tpoint
-                if Fpoint==startpoint and not self.checkPointBranched(rami, Tpoint):
-                    rami[r].append(Fpoint)
+                if Fpoint==startpoint and not self.checkPointBranched(rami, Fpoint):
+                    rami[r].append(startpoint)
                     startpoint = Tpoint
                     found = True
-                if bool(Tpoint==startpoint and not self.checkPointBranched(rami, Tpoint)) and not found:
-                    rami[r].append(Tpoint)
-                    startpoint = Tpoint
-                    found = True
+                    break
             if not found:
                 #if this point is a "to" but not a "from", means we reached the end of this branch
+                rami[r].append(startpoint)
                 r = r +1
-            #go on until there is a point still not considered
-            startpoint = self.checkPointNotBranched(rami)
+                #go on until there is a point still not considered
+                startpoint = self.checkPointNotBranched(rami)
         self.branches = rami
+        print("Total number of branches: "+str(len(self.branches)))
 
     def checkPointNotBranched(self, rami):
         looking = True
