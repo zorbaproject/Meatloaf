@@ -1138,18 +1138,18 @@ class MainWindow(QMainWindow):
                 myZ = self.myCoordinates[point]["pos"][2]
                 if branchEl == 0:
                     print("First point for this branch: "+ str(point))
-                    Ppath.moveTo(QPointF(myX, -myY))
+                    Ppath.moveTo(QPointF(myX, myY))
                     SYZpath.moveTo(QPointF(myY, -myZ))
                     SXZpath.moveTo(QPointF(myX, -myZ))
                 if branchEl == len(branch)-1:
                     print("Last point for this branch: "+ str(point))
-                Ppath.lineTo(QPointF(myX, -myY))
+                Ppath.lineTo(QPointF(myX, myY))
                 SYZpath.lineTo(QPointF(myY, -myZ))
                 SXZpath.lineTo(QPointF(myX, -myZ))
                 #Labels
                 lblMargin = 4
                 tmpPScnText = pianta.addText(str(point), labelFont)
-                tmpPScnText.setPos(QPointF((myX-lblMargin), -(myY+lblMargin)))
+                tmpPScnText.setPos(QPointF((myX-lblMargin), (myY-lblMargin)))
                 tmpSYZScnText = spaccatoYZ.addText(str(point), labelFont)
                 tmpSYZScnText.setPos(QPointF((myY-lblMargin), -(myZ+lblMargin)))
                 tmpSXZScnText = spaccatoXZ.addText(str(point), labelFont)
@@ -1171,18 +1171,18 @@ class MainWindow(QMainWindow):
                 right.append([rX,rY,lZ])
                 up.append([uX,uY,uZ])
                 down.append([dX,dY,dZ])
-            Ppoligon.moveTo(QPointF(left[0][0], -left[0][1]))
+            Ppoligon.moveTo(QPointF(left[0][0], left[0][1]))
             for p in left:
                 c1 = Ppoligon.currentPosition()
-                c2 = QPointF(p[0], -p[1])
-                Ppoligon.cubicTo(c1, c2, QPointF(p[0], -p[1]))
+                c2 = QPointF(p[0], p[1])
+                Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
             right.reverse()
             right.append(left[0]) #close the line
             right = right[1:]
             for p in right:
                 c1 = Ppoligon.currentPosition()
-                c2 = QPointF(p[0], -p[1])
-                Ppoligon.cubicTo(c1, c2, QPointF(p[0], -p[1]))
+                c2 = QPointF(p[0], p[1])
+                Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
             SYZpoligon.moveTo(QPointF(up[0][1], -up[0][2]))
             SXZpoligon.moveTo(QPointF(up[0][0], -up[0][2]))
             for p in up:
@@ -1312,8 +1312,8 @@ class MainWindow(QMainWindow):
             #print((fromX, fromY, fromZ), (toX, toY, toZ))
             thickness = 0
             #https://ezdxf.readthedocs.io/en/stable/layouts/layouts.html#ezdxf.layouts.BaseLayout.add_line
-            msp.add_line((fromX, fromY, fromZ), (toX, toY, toZ))  # add a LINE entity
-            myCenter = [fromX, fromY, fromZ]
+            msp.add_line((fromX, -fromY, fromZ), (toX, -toY, toZ))  # add a LINE entity
+            myCenter = [fromX, -fromY, fromZ]
             if self.isValidSection(row["section"]):
                 secCoords = self.calculateSectionCoord(row["section"], myCenter, row["topographic"]["heading"], row["topographic"]["frontalInclination"], row["topographic"]["sideTilt"])
             else:
@@ -1349,7 +1349,7 @@ class MainWindow(QMainWindow):
                         u = toRow["walls"]['up']
                         d = toRow["walls"]['down']
                         ToSection = self.sectionFromWalls(l,r,u,d)
-                    myCenter = [toX,toY,toZ]
+                    myCenter = [toX,-toY,toZ]
                     ToSecCoords = self.calculateSectionCoord(ToSection, myCenter, toRow["topographic"]["heading"], toRow["topographic"]["frontalInclination"], toRow["topographic"]["sideTilt"])
                     endofbranch = False
                 except:
