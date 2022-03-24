@@ -1313,7 +1313,7 @@ class MainWindow(QMainWindow):
             thickness = 0
             #https://ezdxf.readthedocs.io/en/stable/layouts/layouts.html#ezdxf.layouts.BaseLayout.add_line
             msp.add_line((fromX, -fromY, fromZ), (toX, -toY, toZ))  # add a LINE entity
-            myCenter = [fromX, -fromY, fromZ]
+            myCenter = [fromX, fromY, fromZ]
             if self.isValidSection(row["section"]):
                 secCoords = self.calculateSectionCoord(row["section"], myCenter, row["topographic"]["heading"], row["topographic"]["frontalInclination"], row["topographic"]["sideTilt"])
             else:
@@ -1337,7 +1337,7 @@ class MainWindow(QMainWindow):
                         sTx = secCoords[secP+1][0]
                         sTy = secCoords[secP+1][1]
                         sTz = secCoords[secP+1][2]
-                    msp.add_line((sFx, sFy, sFz), (sTx, sTy, sTz))
+                    msp.add_line((sFx, -sFy, sFz), (sTx, -sTy, sTz))
             if self.w.dxfmesh.isChecked() and len(secCoords)>0:
                 try:
                     toRow = self.getFromPointData(Cfile, row["to"])
@@ -1349,7 +1349,7 @@ class MainWindow(QMainWindow):
                         u = toRow["walls"]['up']
                         d = toRow["walls"]['down']
                         ToSection = self.sectionFromWalls(l,r,u,d)
-                    myCenter = [toX,-toY,toZ]
+                    myCenter = [toX,toY,toZ]
                     ToSecCoords = self.calculateSectionCoord(ToSection, myCenter, toRow["topographic"]["heading"], toRow["topographic"]["frontalInclination"], toRow["topographic"]["sideTilt"])
                     endofbranch = False
                 except:
@@ -1376,10 +1376,10 @@ class MainWindow(QMainWindow):
                     if not endofbranch:
                         #https://ezdxf.readthedocs.io/en/stable/tutorials/mesh.html
                         with mesh.edit_data() as mesh_data:
-                            mesh_data.add_face([(aX,aY,aZ), (cX,cY,cZ), (dX,dY,dZ), (bX,bY,bZ)])
+                            mesh_data.add_face([(aX,-aY,aZ), (cX,-cY,cZ), (dX,-dY,dZ), (bX,-bY,bZ)])
                     else:
                         with mesh.edit_data() as mesh_data:
-                            mesh_data.add_face([(aX,aY,aZ), (toX,toY,toZ), (bX,bY,bZ)])
+                            mesh_data.add_face([(aX,-aY,aZ), (toX,-toY,toZ), (bX,-bY,bZ)])
                 mesh_data.optimize()  # optional, minimizes vertex count
         cleanedname = self.cleanName(self.w.cavename.currentText())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
