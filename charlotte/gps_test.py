@@ -7,6 +7,15 @@ import string
 #sudo pip3 install pynmea2   #Not really necessary
 #sudo pip3 install pyserial
 
+import RPi.GPIO as GPIO
+from time import sleep
+
+GPIO.setmode(GPIO.BCM)
+
+relayPin = 25
+GPIO.setup(relayPin, GPIO.OUT)
+
+
 
 #Add into /boot/config.txt
 #dtparam=spi=on
@@ -27,6 +36,15 @@ import string
 #GND to RPi GND
 #RX to RPi GPIO 14
 #TX to RPi GPIO 15
+
+#Relay:
+#GPIO25
+
+
+
+GPIO.output(relayPin, True)
+
+
 
 while True:
  port="/dev/ttyAMA0"

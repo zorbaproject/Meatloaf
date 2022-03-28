@@ -442,24 +442,35 @@
            <item row="0" column="0">
             <widget class="QDateTimeEdit" name="dateTimeEdit"/>
            </item>
-           <item row="0" column="1">
-            <widget class="QPushButton" name="savedatetime">
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_17">
              <property name="text">
-              <string>Imposta</string>
+              <string>Secondi tra una scansione automatica e l'altra</string>
              </property>
             </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_9">
+             <item>
+              <widget class="QPushButton" name="savedatetime">
+               <property name="text">
+                <string>Imposta</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="getGPStime">
+               <property name="text">
+                <string>Imposta da GPS</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
            <item row="1" column="1">
             <widget class="QSpinBox" name="autoscanSleep">
              <property name="value">
               <number>5</number>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_17">
-             <property name="text">
-              <string>Secondi tra una scansione automatica e l'altra</string>
              </property>
             </widget>
            </item>

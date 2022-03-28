@@ -146,6 +146,98 @@ class hmc5883l:
                "Declination: " + self.degrees(self.declination()) + "\n" \
                "Heading: " + self.degrees(self.heading()) + "\n"
 
+
+class getGPS(QThread):
+    gpsposition = Signal(list)
+    gpstime = Signal(int)
+    def __init__(self, parent, mydata = ""):
+        QThread.__init__(self)
+        self.myparent = parent
+        self.setTerminationEnabled(True)
+        if not isRPI:
+            self.exit()
+        self.relayPinGPS = 25
+        self.GPSport="/dev/ttyAMA0"
+
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(relayPinGPS, GPIO.OUT)
+        self.turnOFF()
+
+    def turnON(self):
+        GPIO.output(relayPin, True)
+
+    def turnOFF(self):
+        GPIO.output(relayPin, False)
+
+    def getTime(self):
+        self.turnON()
+        active = True
+        while active:
+           ser=serial.Serial(self.GPSport, baudrate=9600, timeout=0.5)
+           try:
+             newdata=ser.readline().decode(encoding="ascii")
+           except:
+             newdata=str(ser.readline())
+           newdata=newdata.replace("\\r", "").replace("\\n", "")
+           newdata=newdata.replace("\r", "").replace("\n", "")
+           newdata=newdata.replace("'","")
+           if newdata.startswith("b"):
+               newdata=newdata[1:]
+           if "," not in newdata:
+               continue
+
+           if newdata.find("GSA,") > 1:
+               print("Fix type (1: no, 2: 2D, 3: 3D): "+str(newdata.split(',')[2]))
+               pass
+
+           if newdata.find("RMC") > 1:
+               date = newdata.split(",")[9]
+               time = newdata.split(",")[1]
+               gpsdatetime = date[0:2] + "/" + date[2:4] + "/" +date[4:6] + " " + time[0:2] + ":" + time[2:4] + ":" +time[4:6] + " "
+               print("GPS Time: "+gpsdatetime)
+               gpstime = 0
+               self.position.emit(gpstime)
+               active = False
+        self.turnOFF()
+
+
+    def getPosition(self):
+        self.turnON()
+        active = True
+        while active:
+           ser=serial.Serial(self.GPSport, baudrate=9600, timeout=0.5)
+           try:
+             newdata=ser.readline().decode(encoding="ascii")
+           except:
+             newdata=str(ser.readline())
+           newdata=newdata.replace("\\r", "").replace("\\n", "")
+           newdata=newdata.replace("\r", "").replace("\n", "")
+           newdata=newdata.replace("'","")
+           if newdata.startswith("b"):
+               newdata=newdata[1:]
+           if "," not in newdata:
+               continue
+
+           if newdata.find("GSA,") > 1:
+               print("Fix type (1: no, 2: 2D, 3: 3D): "+str(newdata.split(',')[2]))
+               pass
+
+           if newdata.find("GGA,") > 1:
+               lat=str(float(newdata.split(",")[2][0:2])+(float(newdata.split(",")[2][2:])/60)) +newdata.split(",")[3]
+               lon=str(float(newdata.split(",")[4][0:3])+(float(newdata.split(",")[4][3:])/60)) + newdata.split(",")[5]
+               fix=newdata.split(",")[6]
+               sat=newdata.split(",")[7]
+               alt=newdata.split(",")[9]
+               print("Number of satellites: "+str(sat))
+               print("Fix quality 0 = Invalid, 1 = GPS, 2 = Differential GPS: "+str(fix))
+               print("Lat,long,alt:",lat,lon,alt)
+               myfix = [lat,lon,alt,sat,fix]
+               self.gpsposition.emit(myfix)
+               active = False
+        self.turnOFF()
+
+
+
 class getData(QThread):
     GotScan = Signal(list)
     #######################################Here we read temperature, pressure, distance, and 3-axis position
@@ -538,6 +630,8 @@ class MainWindow(QMainWindow):
         self.w.deletefixrow.clicked.connect(self.deletefixrow)
         self.w.savetable.clicked.connect(self.savetable)
         self.w.updatedrawing.clicked.connect(self.updatedrawing)
+        self.w.readGPS.clicked.connect(self.readGPS)
+        self.w.getGPStime.clicked.connect(self.getGPStime)
         self.w.showDeviceInfo.clicked.connect(self.showDeviceInfo)
         self.w.zoom.valueChanged.connect(self.zoomDrawings)
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
@@ -738,6 +832,24 @@ class MainWindow(QMainWindow):
         except:
             self.requiredData["temperature"] = 0.0
             #print("Error reading temperature")
+
+    def readGPS(self):
+        self.GPSThread = getGPS(self)
+        self.GPSThread.gpsposition.connect(self.gotGPSpos)
+        self.GPSThread.start()
+
+    def gotGPSpos(self, gpsfix):
+        print("Got GPS fix data:")
+        print(gpsfix)
+
+    def getGPStime(self):
+        self.GPSThread = getGPS(self)
+        self.GPSThread.gpstime.connect(self.gotGPStime)
+        self.GPSThread.start()
+
+    def gotGPStime(self, gpstime):
+        print("Got GPS time data:")
+        print(gpstime)
 
     def startLidarScan(self):
         #if isRPI:
