@@ -23,6 +23,10 @@ sudo apt install python3-pyside2*
 #export in Autocad DXF format
 sudo pip3 install ezdxf
 
+#support for kml
+sudo pip3 install simplekml
+sudo pip3 install pyproj
+
 #access serial ports (e.g.: /dev/ttyUSB0) as non root
 sudo pip3 install pyserial
 sudo usermod -a -G dialout $(whoami)
