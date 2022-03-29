@@ -14,6 +14,9 @@ import shutil
 
 import ezdxf
 
+import simplekml
+import pyproj
+
 try:
     import serial
     import PyLidar3
@@ -673,6 +676,7 @@ class MainWindow(QMainWindow):
         if isRPI:
             self.w.dxfmesh.setChecked(False)
         self.showDeviceInfo()
+        self._projections = {}
 
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
@@ -1227,7 +1231,19 @@ class MainWindow(QMainWindow):
         pianta = QGraphicsScene()
         labelFont = QFont("Arial", 1)
 
+        kmlDoc = simplekml.Kml()
+        try:
+            kmlFirstPoint = (Cfile["measurements"][0]["GPS"]["latitude"],Cfile["measurements"][0]["GPS"]["longitude"])
+        except:
+            kmlFirstPoint = (0.0,0.0)
+        print("First point GPS position: ", kmlFirstPoint)
+        kmlZ, kmlL, kmlX0, kmlY0 = self.UTMproject(tuple(reversed(kmlFirstPoint)))
+        pnt = kmlDoc.newpoint(name='Ingresso')
+        pnt.coords = [(kmlX0, kmlY0)]
+
+        branchID = 0
         for branch in self.branches:
+            branchID = branchID + 1
             Ppoligon = QPainterPath()
             SYZpoligon = QPainterPath()
             SXZpoligon = QPainterPath()
@@ -1242,6 +1258,8 @@ class MainWindow(QMainWindow):
             SYZpath.moveTo(QPointF(0, 0))
             SXZpath.moveTo(QPointF(0, 0))
             #tmpScnText = pianta.addText(str("0"), labelFont)
+            kmlcoords = []
+            kmlpoligon = []
             for branchEl in range(len(branch)):
                 point = branch[branchEl]
                 #print(point)
@@ -1258,6 +1276,10 @@ class MainWindow(QMainWindow):
                 Ppath.lineTo(QPointF(myX, myY))
                 SYZpath.lineTo(QPointF(myY, -myZ))
                 SXZpath.lineTo(QPointF(myX, -myZ))
+                rotPoint = self.rotateNorth((myX,myY))
+                kmlX = kmlX0 + rotPoint[0]
+                kmlY = kmlY0 - rotPoint[1]
+                kmlcoords.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
                 #Labels
                 lblMargin = 4
                 tmpPScnText = pianta.addText(str(point), labelFont)
@@ -1284,10 +1306,18 @@ class MainWindow(QMainWindow):
                 up.append([uX,uY,uZ])
                 down.append([dX,dY,dZ])
             Ppoligon.moveTo(QPointF(left[0][0], left[0][1]))
+            rotPoint = self.rotateNorth((left[0][0], left[0][1]))
+            kmlX = kmlX0 + rotPoint[0]
+            kmlY = kmlY0 - rotPoint[1]
+            kmlpoligon.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
             for p in left:
                 c1 = Ppoligon.currentPosition()
                 c2 = QPointF(p[0], p[1])
                 Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
+                rotPoint = self.rotateNorth((p[0], p[1]))
+                kmlX = kmlX0 + rotPoint[0]
+                kmlY = kmlY0 - rotPoint[1]
+                kmlpoligon.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
             right.reverse()
             right.append(left[0]) #close the line
             right = right[1:]
@@ -1295,6 +1325,18 @@ class MainWindow(QMainWindow):
                 c1 = Ppoligon.currentPosition()
                 c2 = QPointF(p[0], p[1])
                 Ppoligon.cubicTo(c1, c2, QPointF(p[0], p[1]))
+                rotPoint = self.rotateNorth((p[0], p[1]))
+                kmlX = kmlX0 + rotPoint[0]
+                kmlY = kmlY0 - rotPoint[1]
+                kmlpoligon.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
+            lin = kmlDoc.newlinestring(name="Poligonale-"+str(branchID), description="Poligonale del ramo "+str(branchID), coords=kmlcoords)
+            lin.style.linestyle.color = "ff0000ff"
+            lin.style.linestyle.width = 2
+            pol = kmlDoc.newpolygon(name='Pareti')
+            pol.outerboundaryis = kmlpoligon
+            pol.style.linestyle.color = simplekml.Color.black
+            pol.style.linestyle.width = 2
+            pol.style.polystyle.color = simplekml.Color.changealphaint(50, simplekml.Color.white)
             SYZpoligon.moveTo(QPointF(up[0][1], -up[0][2]))
             SXZpoligon.moveTo(QPointF(up[0][0], -up[0][2]))
             for p in up:
@@ -1338,6 +1380,56 @@ class MainWindow(QMainWindow):
         self.saveSvg(pianta, Pfilename, "Pianta")
         self.saveSvg(spaccatoYZ, SYZfilename, "Spaccato")
         self.saveSvg(spaccatoXZ, SXZfilename, "Spaccato")
+        kmlDoc.save(cavefolder + "/" + cleanedname + ".kml")
+
+    def rotateNorth(self, point):
+        #in our coordinates system, north goes from left to right. We need to change it from down to up: rotate 90° counter-clockwise
+        x = point[0]
+        y = point[1]
+        radians = math.radians(90)
+        x2 = x * math.cos(radians) + y * math.sin(radians)
+        y2 = -x * math.sin(radians) + y * math.cos(radians)
+        rotPoint = (x2,y2)
+        return rotPoint
+
+
+    #Ref.: https://gist.github.com/twpayne/4409500
+    def UTMzone(self, coordinates):
+        if 56 <= coordinates[1] < 64 and 3 <= coordinates[0] < 12:
+            return 32
+        if 72 <= coordinates[1] < 84 and 0 <= coordinates[0] < 42:
+            if coordinates[0] < 9:
+                return 31
+            elif coordinates[0] < 21:
+                return 33
+            elif coordinates[0] < 33:
+                return 35
+            return 37
+        return int((coordinates[0] + 180) / 6) + 1
+    
+    
+    def UTMletter(self, coordinates):
+        return 'CDEFGHJKLMNPQRSTUVWXX'[int((coordinates[1] + 80) / 8)]
+    
+    
+    def UTMproject(self, coordinates):
+        z = self.UTMzone(coordinates)
+        l = self.UTMletter(coordinates)
+        if z not in self._projections:
+            self._projections[z] = pyproj.Proj(proj='utm', zone=z, ellps='WGS84')
+        x, y = self._projections[z](coordinates[0], coordinates[1])
+        if y < 0:
+            y += 10000000
+        return z, l, x, y
+    
+    
+    def UTMunproject(self, z, l, x, y):
+        if z not in self._projections:
+            self._projections[z] = pyproj.Proj(proj='utm', zone=z, ellps='WGS84')
+        if l < 'N':
+            y -= 10000000
+        lng, lat = self._projections[z](x, y, inverse=True)
+        return (lng, lat)
 
     def drawSection(self, mysection = None, mysideTilt = None):
         if mysection == None:
