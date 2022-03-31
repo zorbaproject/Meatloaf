@@ -1364,6 +1364,76 @@ class MainWindow(QMainWindow):
             pianta.addPath(Ppath, PennaPoligonale)
             spaccatoYZ.addPath(SYZpath, PennaPoligonale)
             spaccatoXZ.addPath(SXZpath, PennaPoligonale)
+        #scale and north
+        pBounding = pianta.itemsBoundingRect().getCoords()
+        sxzBounding = spaccatoXZ.itemsBoundingRect().getCoords()
+        syzBounding = spaccatoYZ.itemsBoundingRect().getCoords()
+        pExtramargin = 20
+        arrowSize = 2
+        labelMargin = -4
+        Northpath = QPainterPath()
+        Northpath.moveTo(QPointF(pBounding[0]-pExtramargin, pBounding[1]-pExtramargin))
+        Northpath.lineTo(QPointF(pBounding[0]-pExtramargin+(arrowSize*5), pBounding[1]-pExtramargin))
+        Northpath.lineTo(QPointF(pBounding[0]-pExtramargin+(arrowSize*5), pBounding[1]-pExtramargin-arrowSize))
+        Northpath.lineTo(QPointF(pBounding[0]-pExtramargin+(arrowSize*5)+arrowSize, pBounding[1]-pExtramargin))
+        Northpath.lineTo(QPointF(pBounding[0]-pExtramargin+(arrowSize*5), pBounding[1]-pExtramargin+arrowSize))
+        Northpath.lineTo(QPointF(pBounding[0]-pExtramargin+(arrowSize*5), pBounding[1]-pExtramargin))
+        pianta.addPath(Northpath, QPen(Qt.black, 0.1))
+        tmpNorthText = pianta.addText("N", QFont("Arial", 2))
+        tmpNorthText.setPos(QPointF(pBounding[0]-pExtramargin+labelMargin, pBounding[1]-pExtramargin+labelMargin))
+        scaleMargin = 10
+        scaleWidth = 2
+        scaleLevels = [0,1,2,5,10]
+        biggerScale = pBounding[2]-pBounding[0]
+        tmpBigScale = pBounding[3]-pBounding[1]
+        if tmpBigScale > biggerScale:
+            biggerScale = tmpBigScale
+        tmpBigScale = sxzBounding[2]-sxzBounding[0]
+        if tmpBigScale > biggerScale:
+            biggerScale = tmpBigScale
+        tmpBigScale = sxzBounding[3]-sxzBounding[1]
+        if tmpBigScale > biggerScale:
+            biggerScale = tmpBigScale
+        tmpBigScale = syzBounding[2]-syzBounding[0]
+        if tmpBigScale > biggerScale:
+            biggerScale = tmpBigScale
+        tmpBigScale = syzBounding[3]-syzBounding[1]
+        if tmpBigScale > biggerScale:
+            biggerScale = tmpBigScale
+        for iScale in [50,100,200,500,1000]:
+            if biggerScale >= (iScale*2):
+                scaleLevels.append(iScale)
+        PscalePoint = QPointF(pBounding[0]-pExtramargin, pBounding[1]-pExtramargin+scaleMargin)
+        SXZscalePoint = QPointF(sxzBounding[0]-pExtramargin, sxzBounding[1]-pExtramargin+scaleMargin)
+        SYZscalePoint = QPointF(syzBounding[0]-pExtramargin, syzBounding[1]-pExtramargin+scaleMargin)
+        for scaleStep in scaleLevels:
+            ScaleP = QPainterPath()
+            ScaleP.moveTo(PscalePoint)
+            PscalePoint = QPointF(pBounding[0]-pExtramargin+scaleStep, pBounding[1]-pExtramargin+scaleMargin)
+            PscalePointDown = QPointF(pBounding[0]-pExtramargin+scaleStep, pBounding[1]-pExtramargin+scaleMargin+scaleWidth)
+            ScaleP.lineTo(PscalePoint)
+            ScaleP.lineTo(PscalePointDown)
+            pianta.addPath(ScaleP, QPen(Qt.black, 0.1))
+            tmpPScale1Text = pianta.addText(str(scaleStep), QFont("Arial", 1))
+            tmpPScale1Text.setPos(QPointF(pBounding[0]-pExtramargin+scaleStep+labelMargin, pBounding[1]-pExtramargin+scaleMargin+labelMargin))
+            ScaleSXZ = QPainterPath()
+            ScaleSXZ.moveTo(SXZscalePoint)
+            SXZscalePoint = QPointF(sxzBounding[0]-pExtramargin+scaleStep, sxzBounding[1]-pExtramargin+scaleMargin)
+            SXZscalePointDown = QPointF(sxzBounding[0]-pExtramargin+scaleStep, sxzBounding[1]-pExtramargin+scaleMargin+scaleWidth)
+            ScaleSXZ.lineTo(SXZscalePoint)
+            ScaleSXZ.lineTo(SXZscalePointDown)
+            spaccatoXZ.addPath(ScaleSXZ, QPen(Qt.black, 0.1))
+            tmpSXZScale1Text = spaccatoXZ.addText(str(scaleStep), QFont("Arial", 1))
+            tmpSXZScale1Text.setPos(QPointF(sxzBounding[0]-pExtramargin+scaleStep+labelMargin, sxzBounding[1]-pExtramargin+scaleMargin+labelMargin))
+            ScaleSYZ = QPainterPath()
+            ScaleSYZ.moveTo(SYZscalePoint)
+            SYZscalePoint = QPointF(syzBounding[0]-pExtramargin+scaleStep, syzBounding[1]-pExtramargin+scaleMargin)
+            SYZscalePointDown = QPointF(syzBounding[0]-pExtramargin+scaleStep, syzBounding[1]-pExtramargin+scaleMargin+scaleWidth)
+            ScaleSYZ.lineTo(SYZscalePoint)
+            ScaleSYZ.lineTo(SYZscalePointDown)
+            spaccatoYZ.addPath(ScaleSYZ, QPen(Qt.black, 0.1))
+            tmpSYZScale1Text = spaccatoYZ.addText(str(scaleStep), QFont("Arial", 1))
+            tmpSYZScale1Text.setPos(QPointF(syzBounding[0]-pExtramargin+scaleStep+labelMargin, syzBounding[1]-pExtramargin+scaleMargin+labelMargin))
         #show in graphicsview
         self.w.pianta.setScene(pianta)
         #TODO: aggiungere opzione in gui per scegliere XZ o YZ
