@@ -24,6 +24,7 @@ sudo apt install python3-pyside2*
 sudo pip3 install ezdxf
 
 #support for kml
+sudo pip3 install -U pip
 sudo pip3 install simplekml
 sudo pip3 install pyproj
 

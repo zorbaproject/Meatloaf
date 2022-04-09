@@ -14,8 +14,6 @@ import shutil
 
 import ezdxf
 
-import simplekml
-import pyproj
 
 try:
     import serial
@@ -656,7 +654,7 @@ class MainWindow(QMainWindow):
         self.w.spaccato.scale(1,1)
         self.w.section.scale(1,1)
         self.w.section.scale(40,40)
-        self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down", "latitude", "longitude"]
+        self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down", "latitude", "longitude", "altitude", "notes"]
         print("UI loaded")
         QApplication.processEvents()
         self.loadPersonalCFG()
@@ -677,6 +675,12 @@ class MainWindow(QMainWindow):
             self.w.dxfmesh.setChecked(False)
         self.showDeviceInfo()
         self._projections = {}
+        try:
+            import simplekml
+            import pyproj
+            self.dokml = True
+        except:
+            self.dokml = False
 
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
@@ -1076,8 +1080,17 @@ class MainWindow(QMainWindow):
         try:
             now = datetime.now()
             nowts = now.strftime("%d%m%Y%H%M%S")
-            shutil.copy(Cfilename, Cfilename+"-bck"+nowts)
+            bckdir = os.path.dirname(Cfilename)
+            bckfile = os.path.basename(Cfilename)+"-bck"+nowts
+            try:
+                os.makedirs(bckdir+"/backups/")
+            except Exception as e:
+                #print(e)
+                pass
+            shutil.copy(Cfilename, bckdir+"/backups/"+bckfile)
+            print("Backup in "+bckdir+"/backups/"+bckfile)
         except:
+            print("Error during backup")
             pass
         cfiletxt = json.dumps(self.myCaveFile).replace(",",",\n")
         text_file = open(Cfilename, "w", encoding='utf-8')
@@ -1123,10 +1136,12 @@ class MainWindow(QMainWindow):
         #
         try:
             lat = self.w.latitude.value()
-            lon = self.w.latitude.value()
+            lon = self.w.longitude.value()
+            alt = self.w.altitude.value()
         except:
             lat = 0.0
             lon = 0.0
+            alt = 0.0
         requiredData = {
         'sideTilt':self.w.sideTilt.value(),
         'frontalInclination':self.w.frontalInclination.value(),
@@ -1148,11 +1163,12 @@ class MainWindow(QMainWindow):
         'timestamp': now.strftime("%d/%m/%Y %H:%M:%S"),
         'from': self.w.fromP.text(),
         'to': self.w.toP.text(),
-        'GPS':{'latitude': lat, 'longitude': lon},
+        'GPS':{'latitude': lat, 'longitude': lon, 'altitude': alt},
         'topographic': requiredData,
         'walls': walls,
         'section': self.section,
-        'ambient':{'temperature': temp, 'pressure': press}
+        'ambient':{'temperature': temp, 'pressure': press},
+        'notes': ""
         }
 
         Cfile['measurements'].append(thismeasure)
@@ -1176,8 +1192,23 @@ class MainWindow(QMainWindow):
             csvtxt = csvtxt + str(row["walls"]['up']) + ","
             csvtxt = csvtxt + str(row["walls"]['down']) + ","
 
-            csvtxt = csvtxt + str(row["GPS"]['latitude']) + ","
-            csvtxt = csvtxt + str(row["GPS"]['longitude']) + ","
+            try:
+                csvtxt = csvtxt + str(row["GPS"]['latitude']) + ","
+            except:
+                csvtxt = csvtxt + "0.0,"
+            try:
+                csvtxt = csvtxt + str(row["GPS"]['longitude']) + ","
+            except:
+                csvtxt = csvtxt + "0.0,"
+            try:
+                csvtxt = csvtxt + str(row["GPS"]['altitude']) + ","
+            except:
+                csvtxt = csvtxt + "0.0,"
+
+            try:
+                csvtxt = csvtxt + str(row["notes"]) + ","
+            except:
+                csvtxt = csvtxt + ","
 
             #csvtxt = csvtxt + str(row["ambient"]['temperature']) + ","
             #csvtxt = csvtxt + str(row["ambient"]['pressure']) + ","
@@ -1231,15 +1262,18 @@ class MainWindow(QMainWindow):
         pianta = QGraphicsScene()
         labelFont = QFont("Arial", 1)
 
-        kmlDoc = simplekml.Kml()
-        try:
-            kmlFirstPoint = (Cfile["measurements"][0]["GPS"]["latitude"],Cfile["measurements"][0]["GPS"]["longitude"])
-        except:
-            kmlFirstPoint = (0.0,0.0)
-        print("First point GPS position: ", kmlFirstPoint)
-        kmlZ, kmlL, kmlX0, kmlY0 = self.UTMproject(tuple(reversed(kmlFirstPoint)))
-        pnt = kmlDoc.newpoint(name='Ingresso')
-        pnt.coords = [(kmlX0, kmlY0)]
+        if self.dokml:
+            kmlDoc = simplekml.Kml()
+            try:
+                kmlFirstPoint = (Cfile["measurements"][0]["GPS"]["latitude"],Cfile["measurements"][0]["GPS"]["longitude"])
+            except:
+                kmlFirstPoint = (0.0,0.0)
+            print("First point GPS position: ", kmlFirstPoint)
+            kmlZ, kmlL, kmlX0, kmlY0 = self.UTMproject(tuple(reversed(kmlFirstPoint)))
+            pnt = kmlDoc.newpoint(name='Ingresso')
+            pnt.coords = [(kmlX0, kmlY0)]
+        else:
+            kmlZ, kmlL, kmlX0, kmlY0 = (0,0,0,0)
 
         branchID = 0
         for branch in self.branches:
@@ -1279,7 +1313,8 @@ class MainWindow(QMainWindow):
                 rotPoint = self.rotateNorth((myX,myY))
                 kmlX = kmlX0 + rotPoint[0]
                 kmlY = kmlY0 - rotPoint[1]
-                kmlcoords.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
+                if self.dokml:
+                    kmlcoords.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
                 #Labels
                 lblMargin = 4
                 tmpPScnText = pianta.addText(str(point), labelFont)
@@ -1309,7 +1344,8 @@ class MainWindow(QMainWindow):
             rotPoint = self.rotateNorth((left[0][0], left[0][1]))
             kmlX = kmlX0 + rotPoint[0]
             kmlY = kmlY0 - rotPoint[1]
-            kmlpoligon.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
+            if self.dokml:
+                kmlpoligon.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
             for p in left:
                 c1 = Ppoligon.currentPosition()
                 c2 = QPointF(p[0], p[1])
@@ -1317,7 +1353,8 @@ class MainWindow(QMainWindow):
                 rotPoint = self.rotateNorth((p[0], p[1]))
                 kmlX = kmlX0 + rotPoint[0]
                 kmlY = kmlY0 - rotPoint[1]
-                kmlpoligon.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
+                if self.dokml:
+                    kmlpoligon.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
             right.reverse()
             right.append(left[0]) #close the line
             right = right[1:]
@@ -1328,15 +1365,17 @@ class MainWindow(QMainWindow):
                 rotPoint = self.rotateNorth((p[0], p[1]))
                 kmlX = kmlX0 + rotPoint[0]
                 kmlY = kmlY0 - rotPoint[1]
-                kmlpoligon.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
-            lin = kmlDoc.newlinestring(name="Poligonale-"+str(branchID), description="Poligonale del ramo "+str(branchID), coords=kmlcoords)
-            lin.style.linestyle.color = "ff0000ff"
-            lin.style.linestyle.width = 2
-            pol = kmlDoc.newpolygon(name='Pareti')
-            pol.outerboundaryis = kmlpoligon
-            pol.style.linestyle.color = simplekml.Color.black
-            pol.style.linestyle.width = 2
-            pol.style.polystyle.color = simplekml.Color.changealphaint(50, simplekml.Color.white)
+                if self.dokml:
+                    kmlpoligon.append(self.UTMunproject(kmlZ, kmlL, kmlX, kmlY))
+            if self.dokml:
+                lin = kmlDoc.newlinestring(name="Poligonale-"+str(branchID), description="Poligonale del ramo "+str(branchID), coords=kmlcoords)
+                lin.style.linestyle.color = "ff0000ff"
+                lin.style.linestyle.width = 2
+                pol = kmlDoc.newpolygon(name='Pareti')
+                pol.outerboundaryis = kmlpoligon
+                pol.style.linestyle.color = simplekml.Color.black
+                pol.style.linestyle.width = 2
+                pol.style.polystyle.color = simplekml.Color.changealphaint(50, simplekml.Color.white)
             SYZpoligon.moveTo(QPointF(up[0][1], -up[0][2]))
             SXZpoligon.moveTo(QPointF(up[0][0], -up[0][2]))
             for p in up:
@@ -1450,7 +1489,8 @@ class MainWindow(QMainWindow):
         self.saveSvg(pianta, Pfilename, "Pianta")
         self.saveSvg(spaccatoYZ, SYZfilename, "Spaccato")
         self.saveSvg(spaccatoXZ, SXZfilename, "Spaccato")
-        kmlDoc.save(cavefolder + "/" + cleanedname + ".kml")
+        if self.dokml:
+            kmlDoc.save(cavefolder + "/" + cleanedname + ".kml")
 
     def rotateNorth(self, point):
         #in our coordinates system, north goes from left to right. We need to change it from down to up: rotate 90° counter-clockwise
@@ -1819,6 +1859,8 @@ class MainWindow(QMainWindow):
             self.myCaveFile['measurements'][r]['walls']['down'] = float(self.w.fulltable.item(r,9).text())
             self.myCaveFile['measurements'][r]['GPS']['latitude'] = float(self.w.fulltable.item(r,10).text())
             self.myCaveFile['measurements'][r]['GPS']['longitude'] = float(self.w.fulltable.item(r,11).text())
+            self.myCaveFile['measurements'][r]['GPS']['altitude'] = float(self.w.fulltable.item(r,12).text())
+            self.myCaveFile['measurements'][r]['notes'] = str(self.w.fulltable.item(r,13).text())
         self.saveFile()
 
     def populateTable(self, CSV):

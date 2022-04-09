@@ -225,17 +225,30 @@
               <item row="2" column="0">
                <widget class="QLabel" name="label_18">
                 <property name="text">
-                 <string>Latitudine</string>
+                 <string>Latitude</string>
                 </property>
                </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QDoubleSpinBox" name="longitude"/>
+              </item>
+              <item row="2" column="1">
+               <widget class="QDoubleSpinBox" name="latitude"/>
               </item>
               <item row="0" column="1">
                <widget class="QDoubleSpinBox" name="pressure"/>
               </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_19">
+                <property name="text">
+                 <string>Longitude</string>
+                </property>
+               </widget>
+              </item>
               <item row="1" column="0">
                <widget class="QLabel" name="label_13">
                 <property name="text">
-                 <string>Temperatura</string>
+                 <string>Temperature</string>
                 </property>
                </widget>
               </item>
@@ -245,22 +258,19 @@
               <item row="0" column="0">
                <widget class="QLabel" name="label_14">
                 <property name="text">
-                 <string>Pressione</string>
+                 <string>Pressure</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="label_19">
+              <item row="4" column="1">
+               <widget class="QDoubleSpinBox" name="altitude"/>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="label_20">
                 <property name="text">
-                 <string>Longitudine</string>
+                 <string>Altitude</string>
                 </property>
                </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QDoubleSpinBox" name="latitude"/>
-              </item>
-              <item row="3" column="1">
-               <widget class="QDoubleSpinBox" name="longitude"/>
               </item>
              </layout>
             </item>
