@@ -332,7 +332,21 @@
           <item>
            <widget class="QPushButton" name="updatedrawing">
             <property name="text">
-             <string>Aggiorna</string>
+             <string>Draw 2D (SVG)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="updatelidarsvg">
+            <property name="text">
+             <string>Draw Lidar scans (SVG)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="updatedxf">
+            <property name="text">
+             <string>Draw 3D (DXF)</string>
             </property>
            </widget>
           </item>
@@ -340,25 +354,48 @@
         </item>
         <item>
          <layout class="QGridLayout" name="gridLayout">
-          <item row="1" column="0">
+          <item row="2" column="0">
            <widget class="QGraphicsView" name="pianta"/>
           </item>
           <item row="0" column="0">
            <widget class="QLabel" name="label_11">
             <property name="text">
-             <string>Pianta</string>
+             <string>Top view and Lidar scans</string>
             </property>
            </widget>
           </item>
           <item row="0" column="1">
            <widget class="QLabel" name="label_12">
             <property name="text">
-             <string>Spaccato</string>
+             <string>Sectional view</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="1">
+          <item row="2" column="1">
            <widget class="QGraphicsView" name="spaccato"/>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="spaccatocombo">
+            <item>
+             <property name="text">
+              <string>XZ</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>YX</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QComboBox" name="piantacombo">
+            <item>
+             <property name="text">
+              <string>XY</string>
+             </property>
+            </item>
+           </widget>
           </item>
          </layout>
         </item>
