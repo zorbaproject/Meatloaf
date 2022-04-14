@@ -631,12 +631,15 @@ class MainWindow(QMainWindow):
         self.w.deletefixrow.clicked.connect(self.deletefixrow)
         self.w.savetable.clicked.connect(self.savetable)
         self.w.updatedrawing.clicked.connect(self.updatedrawing)
+        self.w.updatedxf.clicked.connect(self.updatedxf)
+        self.w.updatelidarsvg.clicked.connect(self.updatelidarsvg)
         self.w.readGPS.clicked.connect(self.readGPS)
         self.w.getGPStime.clicked.connect(self.getGPStime)
         self.w.showDeviceInfo.clicked.connect(self.showDeviceInfo)
         self.w.zoom.valueChanged.connect(self.zoomDrawings)
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
-        self.w.cavename.currentTextChanged.connect(self.cavenamechanged)
+        self.w.piantacombo.currentTextChanged.connect(self.piantacombo)
+        self.w.spaccatocombo.currentTextChanged.connect(self.spaccatocombo)
         self.requiredData = {}
         self.section = [0.0 for deg in range(360)]  #we expect to get one value for every degree
         self.walls = {}
@@ -675,12 +678,6 @@ class MainWindow(QMainWindow):
             self.w.dxfmesh.setChecked(False)
         self.showDeviceInfo()
         self._projections = {}
-        try:
-            import simplekml
-            import pyproj
-            self.dokml = True
-        except:
-            self.dokml = False
 
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
@@ -1261,6 +1258,13 @@ class MainWindow(QMainWindow):
         spaccatoYZ = QGraphicsScene()
         pianta = QGraphicsScene()
         labelFont = QFont("Arial", 1)
+        
+        try:
+            import simplekml
+            import pyproj
+            self.dokml = True
+        except:
+            self.dokml = False
 
         if self.dokml:
             kmlDoc = simplekml.Kml()
@@ -1476,7 +1480,10 @@ class MainWindow(QMainWindow):
         #show in graphicsview
         self.w.pianta.setScene(pianta)
         #TODO: aggiungere opzione in gui per scegliere XZ o YZ
-        self.w.spaccato.setScene(spaccatoYZ)
+        if self.w.spaccatocombo.currentText == "YZ":
+            self.w.spaccato.setScene(spaccatoYZ)
+        else:
+            self.w.spaccato.setScene(spaccatoXZ)
         self.w.pianta.show()
         self.w.spaccato.show()
         self.w.zoom.setValue(self.w.zoom.maximum())
@@ -1523,6 +1530,7 @@ class MainWindow(QMainWindow):
     
     
     def UTMproject(self, coordinates):
+        import pyproj
         z = self.UTMzone(coordinates)
         l = self.UTMletter(coordinates)
         if z not in self._projections:
@@ -1534,6 +1542,7 @@ class MainWindow(QMainWindow):
     
     
     def UTMunproject(self, z, l, x, y):
+        import pyproj
         if z not in self._projections:
             self._projections[z] = pyproj.Proj(proj='utm', zone=z, ellps='WGS84')
         if l < 'N':
@@ -1570,8 +1579,9 @@ class MainWindow(QMainWindow):
         c2 = QPointF(secCoords[0][0], secCoords[0][2])
         Spoligon.cubicTo(c1, c2, QPointF(secCoords[0][0], secCoords[0][2]))
         sezione.addPath(Spoligon, PennaBordo)
-        self.sezioneScene = sezione
+        #self.sezioneScene = sezione
         if mysection == None:
+            self.sezioneScene = sezione
             self.w.section.setScene(self.sezioneScene)
             self.w.section.show()
             #QApplication.processEvents()
@@ -1753,9 +1763,41 @@ class MainWindow(QMainWindow):
         self.getCoordinates(self.myCaveFile)
         self.getBranches(self.myCaveFile)
         self.Json2Svg(self.myCaveFile)
-        self.Json2Dxf(self.myCaveFile)
         #xfiletxt = self.json2CSX(self.myCaveFile)
         #print(xfiletxt)
+        
+    def updatedxf(self):
+        self.getCoordinates(self.myCaveFile)
+        self.getBranches(self.myCaveFile)
+        self.Json2Dxf(self.myCaveFile)
+        
+    def spaccatocombo(self):
+        pass
+    
+    def piantacombo(self):
+        pass
+    
+    def updatelidarsvg(self):
+        cleanedname = self.cleanName(self.w.cavename.currentText())
+        cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
+        secfolder = cavefolder + "/" + "sections"
+        try:
+            os.makedirs(secfolder)
+        except:
+            pass
+        processed = []
+        for row in self.myCaveFile["measurements"]:
+            pname = str(row["from"])
+            processed.append(pname)
+            if processed.count(pname) == 1:
+                pfilename = pname
+            else:
+                pfilename = pname+"-"+str(processed.count(pname))
+            mysection = row["section"]
+            mysideTilt = row["topographic"]["sideTilt"]
+            secScene = self.drawSection(mysection, mysideTilt)
+            Sfilename = secfolder + "/" + cleanedname + "-sezione"+pfilename+".svg"
+            self.saveSvg(secScene, Sfilename, "Sezione "+pfilename)        
 
     def getFromPointData(self, Cfile, pointname):
         point = {}
