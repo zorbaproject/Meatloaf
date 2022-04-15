@@ -1480,7 +1480,7 @@ class MainWindow(QMainWindow):
         #show in graphicsview
         self.w.pianta.setScene(pianta)
         #TODO: aggiungere opzione in gui per scegliere XZ o YZ
-        if self.w.spaccatocombo.currentText == "YZ":
+        if self.w.spaccatocombo.currentText() == "YZ":
             self.w.spaccato.setScene(spaccatoYZ)
         else:
             self.w.spaccato.setScene(spaccatoXZ)
@@ -1563,21 +1563,27 @@ class MainWindow(QMainWindow):
         else:
             sideTilt = mysideTilt
         #print(mysection)
-        myCenter = [0.0, 0.0, 0.0]
+        #myCenter = [0.0, 0.0, 0.0]
         sezione = QGraphicsScene()
-        secCoords = self.calculateSectionCoord(section, myCenter, 0.0, 0.0, sideTilt)
+        #secCoords = self.calculateSectionCoord(section, myCenter, 0.0, 0.0, sideTilt)
+        secCoords = []
+        for i in range(len(section)):
+            angle = (i - sideTilt) % len(section)
+            myX = -section[i]*math.cos(math.radians(angle))
+            myY = section[i]*math.sin(math.radians(angle))
+            secCoords.append([myX,myY])
         if len(secCoords) <360 or self.isSectionNull(section):
             return sezione
         PennaBordo = QPen(Qt.black, 0.2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin) #Qt.Dashline https://doc.qt.io/qtforpython/PySide2/QtGui/QPen.html
         Spoligon = QPainterPath()
-        Spoligon.moveTo(QPointF(secCoords[0][0], secCoords[0][2]))
+        Spoligon.moveTo(QPointF(secCoords[0][0], secCoords[0][1]))
         for angle in range(1,len(secCoords)):
             c1 = Spoligon.currentPosition()
-            c2 = QPointF(secCoords[angle][0], secCoords[angle][2])
-            Spoligon.cubicTo(c1, c2, QPointF(secCoords[angle][0], secCoords[angle][2]))
+            c2 = QPointF(secCoords[angle][0], secCoords[angle][1])
+            Spoligon.cubicTo(c1, c2, QPointF(secCoords[angle][0], secCoords[angle][1]))
         c1 = Spoligon.currentPosition()
-        c2 = QPointF(secCoords[0][0], secCoords[0][2])
-        Spoligon.cubicTo(c1, c2, QPointF(secCoords[0][0], secCoords[0][2]))
+        c2 = QPointF(secCoords[0][0], secCoords[0][1])
+        Spoligon.cubicTo(c1, c2, QPointF(secCoords[0][0], secCoords[0][1]))
         sezione.addPath(Spoligon, PennaBordo)
         #self.sezioneScene = sezione
         if mysection == None:
