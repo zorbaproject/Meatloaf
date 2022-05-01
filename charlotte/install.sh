@@ -15,6 +15,7 @@ read
 sudo raspi-config
 sudo pip3 install adafruit-circuitpython-lsm303-accel
 sudo pip3 install adafruit-circuitpython-lsm303dlh-mag
+sudo pip3 install Adafruit-BMP
 
 sudo apt install libpyside2-dev pyside2-tools
 sudo apt install python3-pyside2*
@@ -45,6 +46,9 @@ sudo ./autologin.sh
 #needed for the access point mode
 chmod +x accesspoint.sh
 sudo apt-get install iw hostapd wireless-tools dnsmasq
+
+#boot configuration
+cp ./config.txt /boot/config.txt
 
 cat << EOF | tee /tmp/dhcpcd.conf
 interface wlan0

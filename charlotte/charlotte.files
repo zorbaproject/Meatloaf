@@ -1,6 +1,7 @@
 LSM303DLHC-test.py
 TTLrangefinder1D.py
 YDLidarX4test.py
+bmp180.py
 bootconfig.txt
 charlotte.ui
 charlotte.py

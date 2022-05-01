@@ -27,6 +27,7 @@ try:
     import busio
     #import adafruit_lsm303_accel
     #import adafruit_lsm303dlh_mag
+    import Adafruit_BMP.BMP085 as BMP085
     import smbus
     isRPI = True
     print("Running on RPi")
@@ -234,6 +235,7 @@ class getGPS(QThread):
                print("Lat,long,alt:",lat,lon,alt)
                myfix = [lat,lon,alt,sat,fix]
                self.gpsposition.emit(myfix)
+               self.myparent.w.statusbar.showMessage(str(myfix))
                active = False
         self.turnOFF()
 
@@ -330,6 +332,15 @@ class getData(QThread):
             except:
                 self.requiredData["temperature"] = -127
             try:
+                temperature, pressure, alt_adjusted = self.readBMP()
+                self.requiredData["temperature"] = temperature
+                self.requiredData["pressure"] = pressure
+                self.requiredData["bar_altitude"] = alt_adjusted
+            except:
+                self.requiredData["temperature"] = 0
+                self.requiredData["pressure"] = 0
+                self.requiredData["bar_altitude"] = 0
+            try:
                 xAccl,yAccl,zAccl = self.getLSM303_accel(self.lsmbus)
                 xMag,yMag,zMag = self.getLSM303_heading(self.lsmbus)
                 self.requiredData["sideTilt"] = self.get_x_rotation(xAccl,yAccl,zAccl)
@@ -401,6 +412,20 @@ class getData(QThread):
         #Leggo la temperatura
         temperature_in_celsius = self.tempsensor.get_temperature()
         return temperature_in_celsius
+
+    def readBMP(self):
+        bmp_sensor = BMP085.BMP085(busnum=5)
+        #Mean Sea Level = msl, pressione attuale al livello del mare, da bollettino meteo
+        #https://www.osmer.fvg.it/stazioni.php?ln=&m=0
+        msl = 1015.00
+
+        temperature = bmp_sensor.read_temperature()
+        pressure = bmp_sensor.read_pressure()
+        hpa_pressure = pressure/100
+
+        altitude_adjusted = (44330.0*(1-pow(hpa_pressure/msl,1/5.255)))
+        return temperature, hpa_pressure, altitude_adjusted
+
 
     def stopRangefinder(self):
         line = ""
@@ -825,6 +850,8 @@ class MainWindow(QMainWindow):
         self.requiredData = mydata
         self.validateData()
         self.w.temperature.setValue(self.requiredData["temperature"])
+        self.w.pressure.setValue(self.requiredData["pressure"])
+        self.w.bar_altitude.setValue(self.requiredData["bar_altitude"])
         self.w.sideTilt.setValue(self.requiredData["sideTilt"])
         self.w.frontalInclination.setValue(self.requiredData["frontalInclination"])
         self.w.heading.setValue(self.requiredData["heading"])
@@ -846,6 +873,8 @@ class MainWindow(QMainWindow):
     def gotGPSpos(self, gpsfix):
         print("Got GPS fix data:")
         print(gpsfix)
+        self.w.latitude.setValue(gpsfix[0])
+        self.w.longitude.setValue(gpsfix[1])
 
     def getGPStime(self):
         self.GPSThread = getGPS(self)
@@ -1126,6 +1155,7 @@ class MainWindow(QMainWindow):
         
         temp = self.w.temperature.value()
         press = self.w.pressure.value()
+        bar_alt = self.w.bar_altitude.value()
 
         dist = float(self.w.distance.value())
         if firstdistance > 0.0:
@@ -1164,7 +1194,7 @@ class MainWindow(QMainWindow):
         'topographic': requiredData,
         'walls': walls,
         'section': self.section,
-        'ambient':{'temperature': temp, 'pressure': press},
+        'ambient':{'temperature': temp, 'pressure': press, 'bar_altitude': bar_alt},
         'notes': ""
         }
 
