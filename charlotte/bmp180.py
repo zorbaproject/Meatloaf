@@ -15,7 +15,12 @@ print('Sealevel Pressure = '+str(bmp_sensor.read_sealevel_pressure())) # The sea
 
 msl = 1015.00
 #https://www.osmer.fvg.it/stazioni.php?ln=&m=0
-#Posso calcolare la msl se ho un punto con pressione e altitudine nota, basta invertire l'equazione per far tornare i conti e calcolare msl
+
+#Posso calcolare la msl se ho un punto con pressione e altitudine nota:
+#Es:
+hpa_pressure = 994.24
+known_alt = 194
+msl = (hpa_pressure /(pow((1-(known_alt/44330.0)),5.255)))
 
 temperature = bmp_sensor.read_temperature()
 pressure = bmp_sensor.read_pressure()
