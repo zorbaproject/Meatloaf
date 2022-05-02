@@ -942,11 +942,11 @@ class MainWindow(QMainWindow):
             coord[pointname] = self.getPointWalls(pointname, frompointname, myX, myY, myZ)
         self.myCoordinates = coord
 
-    def getPointWalls(self, pointname, frompointname, myX, myY, myZ, Cfile = None):
+    def getPointWalls(self, pointname, frompointname, myX, myY, myZ, Cfile = None, newbranch = False):
         pcoords = {}
         if Cfile == None:
             Cfile = self.myCaveFile
-        rawdata = self.getFromPointData(Cfile, frompointname)
+        rawdata = self.getFromPointData(Cfile, frompointname, pointname)
         try:
             sideTilt = rawdata["topographic"]['sideTilt']
             incl = rawdata["topographic"]['frontalInclination']
@@ -957,7 +957,8 @@ class MainWindow(QMainWindow):
             incl = 0
             heading = 0
             dist = 0
-        rawdata = self.getFromPointData(Cfile, pointname)
+        if not newbranch:
+            rawdata = self.getFromPointData(Cfile, pointname)
         if len(rawdata) >0:
             l = rawdata["walls"]['left']
             r = rawdata["walls"]['right']
@@ -1331,11 +1332,20 @@ class MainWindow(QMainWindow):
             for branchEl in range(len(branch)):
                 point = branch[branchEl]
                 #print(point)
-                myX = self.myCoordinates[point]["pos"][0]
-                myY = self.myCoordinates[point]["pos"][1]
-                myZ = self.myCoordinates[point]["pos"][2]
+                myCoords = self.myCoordinates[point]
+                #if branchEl == 0:
+                #    nextpoint = branch[branchEl+1]
+                #    tmpcoords = self.getPointWalls(nextpoint, point, myX, myY, myZ)
+                #    pass
+                myX = myCoords["pos"][0]
+                myY = myCoords["pos"][1]
+                myZ = myCoords["pos"][2]
                 if branchEl == 0:
                     print("First point for this branch: "+ str(point))
+                    nextpoint = branch[branchEl+1]
+                    tmpcoords = self.getPointWalls(nextpoint, point, myX, myY, myZ, self.myCaveFile, True)
+                    myCoords = tmpcoords
+                    #
                     Ppath.moveTo(QPointF(myX, myY))
                     SYZpath.moveTo(QPointF(myY, -myZ))
                     SXZpath.moveTo(QPointF(myX, -myZ))
@@ -1358,18 +1368,18 @@ class MainWindow(QMainWindow):
                 tmpSXZScnText = spaccatoXZ.addText(str(point), labelFont)
                 tmpSXZScnText.setPos(QPointF((myX-lblMargin), -(myZ+lblMargin)))
                 # #print(Ppath.currentPosition())
-                lX = self.myCoordinates[point]["left"][0]
-                lY = self.myCoordinates[point]["left"][1]
-                lZ = self.myCoordinates[point]["left"][2]
-                rX = self.myCoordinates[point]["right"][0]
-                rY = self.myCoordinates[point]["right"][1]
-                rZ = self.myCoordinates[point]["right"][2]
-                uX = self.myCoordinates[point]["up"][0]
-                uY = self.myCoordinates[point]["up"][1]
-                uZ = self.myCoordinates[point]["up"][2]
-                dX = self.myCoordinates[point]["down"][0]
-                dY = self.myCoordinates[point]["down"][1]
-                dZ = self.myCoordinates[point]["down"][2]
+                lX = myCoords["left"][0]
+                lY = myCoords["left"][1]
+                lZ = myCoords["left"][2]
+                rX = myCoords["right"][0]
+                rY = myCoords["right"][1]
+                rZ = myCoords["right"][2]
+                uX = myCoords["up"][0]
+                uY = myCoords["up"][1]
+                uZ = myCoords["up"][2]
+                dX = myCoords["down"][0]
+                dY = myCoords["down"][1]
+                dZ = myCoords["down"][2]
                 left.append([lX,lY,lZ])
                 right.append([rX,rY,lZ])
                 up.append([uX,uY,uZ])
@@ -1835,12 +1845,13 @@ class MainWindow(QMainWindow):
             Sfilename = secfolder + "/" + cleanedname + "-sezione"+pfilename+".svg"
             self.saveSvg(secScene, Sfilename, "Sezione "+pfilename)        
 
-    def getFromPointData(self, Cfile, pointname):
+    def getFromPointData(self, Cfile, pointname, topointname = ""):
         point = {}
         for row in Cfile["measurements"]:
             if row["from"] == pointname:
                 point = row
-                break
+                if topointname == "" or topointname == row["to"]:
+                    break
         return point
 
     def getBranches(self, Cfile):
