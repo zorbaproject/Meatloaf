@@ -339,7 +339,7 @@ class getData(QThread):
             except:
                 self.requiredData["temperature"] = 0
                 self.requiredData["pressure"] = 0
-                self.requiredData["bar_altitude"] = 0
+                self.requiredData["bar_altitude"] = -10000
             try:
                 xAccl,yAccl,zAccl = self.getLSM303_accel(self.lsmbus)
                 xMag,yMag,zMag = self.getLSM303_heading(self.lsmbus)
@@ -1362,6 +1362,13 @@ class MainWindow(QMainWindow):
             pnt.coords = [(kmlX0, kmlY0)]
         else:
             kmlZ, kmlL, kmlX0, kmlY0 = (0,0,0,0)
+            
+        #Probabilmente è troppo complicato calcolare l'asse esatto https://www.speleo.it/site/images/catasto_grotte/scheda_3_ssi_normativa_rid.pdf
+        lunghezza = 0.0  #Saranno inclusi i pozzi
+        dislivello = 0.0
+        dislivelloBar = 0.0
+        altMin = 10000.0
+        altMax = -10000.0
 
         branchID = 0
         for branch in self.branches:
@@ -1393,6 +1400,14 @@ class MainWindow(QMainWindow):
                 myX = myCoords["pos"][0]
                 myY = myCoords["pos"][1]
                 myZ = myCoords["pos"][2]
+                try:
+                    if myZ < altMin:
+                        altMin = myZ
+                    if myZ > altMax:
+                        altMax = myZ
+                    dislivello = altMax - altMin
+                except:
+                    pass
                 if branchEl == 0:
                     print("First point for this branch: "+ str(point))
                     nextpoint = branch[branchEl+1]
@@ -1591,6 +1606,30 @@ class MainWindow(QMainWindow):
         self.saveSvg(spaccatoXZ, SXZfilename, "Spaccato")
         if self.dokml:
             kmlDoc.save(cavefolder + "/" + cleanedname + ".kml")
+        BarMin = 10000.0
+        BarMax = -10000.0
+        for row in Cfile["measurements"]:
+            try:
+                lunghezza = lunghezza + row["topographic"]["distance"]
+            except:
+                pass
+            try:
+                if row["ambient"]["bar_altitude"] == -10000:
+                    continue
+                if row["ambient"]["bar_altitude"] < BarMin:
+                    BarMin = row["ambient"]["bar_altitude"]
+                if row["ambient"]["bar_altitude"] > BarMax:
+                    BarMax = row["ambient"]["bar_altitude"]
+            except:
+                pass
+        try:
+            dislivelloBar = BarMax - BarMin
+        except:
+            pass
+        try:
+            self.w.statusbar.showMessage("Lunghezza poligonale: "+str("{:.2f}".format(lunghezza))+" Dislivello: "+str("{:.2f}".format(dislivello))+" Dislivello barometrico: "+str("{:.2f}".format(dislivelloBar)))
+        except:
+            pass
 
     def rotateNorth(self, point):
         #in our coordinates system, north goes from left to right. We need to change it from down to up: rotate 90° counter-clockwise
@@ -1806,7 +1845,10 @@ class MainWindow(QMainWindow):
                 mesh_data.optimize()  # optional, minimizes vertex count
         cleanedname = self.cleanName(self.w.cavename.currentText())
         cavefolder = self.mycfg["outputfolder"] + "/" + cleanedname
-        Dfilename = cavefolder + "/" + cleanedname + ".dxf"
+        nomesh = ""
+        if not self.w.dxfmesh.isChecked():
+            nomesh = "-nomesh"
+        Dfilename = cavefolder + "/" + cleanedname + nomesh + ".dxf"
         doc.saveas(Dfilename)
 
     def sectionFromWalls(self, l, r, u, d, tilt = 0):
