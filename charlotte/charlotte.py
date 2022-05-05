@@ -1296,44 +1296,64 @@ class MainWindow(QMainWindow):
     
     def json2DAT(self, Cfile):
         dattxt = ""
-        dattxt = dattxt + Cfile["caveName"] + "\n"
-        dattxt = dattxt + "SURVEY NAME: " + Cfile["caveName"] + "\n"
-        dattxt = dattxt + "SURVEY DATE: 5 3 2022  COMMENT:"+ "\n"
-        dattxt = dattxt + "SURVEY TEAM: "+ "\n"
-        dattxt = dattxt + "?"+ "\n"
-        dattxt = dattxt + "DECLINATION:    0.00  FORMAT: DMMDUDRLLAaDdNF  CORRECTIONS:  0.00 0.00 0.00  CORRECTIONS2:  0.00 0.00"+ "\n"
-        dattxt = dattxt + "\n"
-        dattxt = dattxt + "                FROM                   TO   LENGTH  BEARING      INC     LEFT       UP     DOWN    RIGHT   FLAGS  COMMENTS"+ "\n"
+        #https://www.fountainware.com/compass/Documents/ItalianTutorial.pdf
+        dattxt = dattxt + Cfile["caveName"] + "\r\n"
+        dattxt = dattxt + "SURVEY NAME: " + Cfile["caveName"] + "\r\n"
+        dattxt = dattxt + "SURVEY DATE: 5 3 2022  COMMENT:"+ "\r\n"
+        dattxt = dattxt + "SURVEY TEAM: "+ "\r\n"
+        dattxt = dattxt + "?"+ "\r\n"
+        dattxt = dattxt + "DECLINATION:    0.00  FORMAT: DMMDUDRLLAaDdNF  CORRECTIONS:  0.00 0.00 0.00  CORRECTIONS2:  0.00 0.00"+ "\r\n"
+        dattxt = dattxt + "\r\n"
+        dattxt = dattxt + "                FROM                   TO   LENGTH  BEARING      INC     LEFT       UP     DOWN    RIGHT   FLAGS  COMMENTS"+ "\r\n"
+        #Origine
+        dattxt = dattxt + str(Cfile["caveName"][:15] + "_0").rjust(20)
+        dattxt = dattxt + str(Cfile["caveName"][:15] + "_0").rjust(20)
+        dattxt = dattxt + str("0.00").rjust(9)
+        dattxt = dattxt + str("0.00").rjust(9)
+        dattxt = dattxt + str("0.00").rjust(9)
+        dattxt = dattxt + str("0.00").rjust(9)
+        dattxt = dattxt + str("0.00").rjust(9)
+        dattxt = dattxt + str("0.00").rjust(9)
+        dattxt = dattxt + str("0.00").rjust(9)
+        dattxt = dattxt + "\r\n"
+        #Compass si aspetta i dati in piedi e non i metri
         for row in Cfile["measurements"]:
             #dattxt = dattxt + "             "
-            dattxt = dattxt + str(row["from"]).rjust(20)
+            dattxt = dattxt + str(Cfile["caveName"][:15] + "_" + row["from"]).rjust(20)
             #dattxt = dattxt + "              "
-            dattxt = dattxt + str(row["to"]).rjust(20)
+            dattxt = dattxt + str(Cfile["caveName"][:15] + "_" + row["to"]).rjust(20)
 
             #dattxt = dattxt + "     8.20"
-            dattxt = dattxt + str("{:.2f}".format(row["topographic"]['distance'])).rjust(9)
+            dattxt = dattxt + str("{:.2f}".format(self.toFeet(row["topographic"]['distance']))).rjust(9)
             #dattxt = dattxt + "   340.00"
             dattxt = dattxt + str("{:.2f}".format(row["topographic"]['heading'])).rjust(9)
             #dattxt = dattxt + "   -10.00"
             dattxt = dattxt + str("{:.2f}".format(row["topographic"]['frontalInclination'])).rjust(9)
             
             #dattxt = dattxt + "    13.12"
-            dattxt = dattxt + str("{:.2f}".format(row["walls"]['left'])).rjust(9)
+            dattxt = dattxt + str("{:.2f}".format(self.toFeet(row["walls"]['left']))).rjust(9)
             #dattxt = dattxt + "     3.28"
-            dattxt = dattxt + str("{:.2f}".format(row["walls"]['right'])).rjust(9)
+            dattxt = dattxt + str("{:.2f}".format(self.toFeet(row["walls"]['right']))).rjust(9)
             #dattxt = dattxt + "     6.56"
-            dattxt = dattxt + str("{:.2f}".format(row["walls"]['up'])).rjust(9)
+            dattxt = dattxt + str("{:.2f}".format(self.toFeet(row["walls"]['up']))).rjust(9)
             #dattxt = dattxt + "     9.84"
-            dattxt = dattxt + str("{:.2f}".format(row["walls"]['down'])).rjust(9)
+            dattxt = dattxt + str("{:.2f}".format(self.toFeet(row["walls"]['down']))).rjust(9)
 
             #try:
             #    dattxt = dattxt + str(row["notes"])
             #except:
             #    pass
 
-            dattxt = dattxt + "\n"
-        #dattxt = dattxt + "\n"
+            dattxt = dattxt + "\r\n"
+        dattxt = dattxt + "\x0C\x0D\x0A\x1A"
         return dattxt
+    
+    def toFeet(self, meters):
+        try:
+            feet = float(meters)*3.28084
+        except:
+            feet = 0.0
+        return feet
 
     def Json2Svg(self, Cfile):
         print("Drawing SVG")
