@@ -11,9 +11,14 @@ from datetime import datetime
 import numpy as np
 
 import shutil
+import platform
 
 import ezdxf
 
+isWindows = False
+arch = platform.architecture()[0]
+if platform.system() == "Windows":
+    isWindows = True
 
 try:
     import serial
@@ -709,11 +714,14 @@ class MainWindow(QMainWindow):
 
     def showDeviceInfo(self):
         fulltext = "Informazioni sul dispositivo:\n"
-        os.system("ip -br a > /tmp/devinfo.txt")
-        os.system("date >> /tmp/devinfo.txt")
-        text_file = open("/tmp/devinfo.txt", "r", encoding='utf-8')
-        lines = text_file.read()
-        text_file.close()
+        if isWindows:
+            lines = "Windows"
+        else:
+            os.system("ip -br a > /tmp/devinfo.txt")
+            os.system("date >> /tmp/devinfo.txt")
+            text_file = open("/tmp/devinfo.txt", "r", encoding='utf-8')
+            lines = text_file.read()
+            text_file.close()
         self.w.deviceinfo.setText(fulltext+lines)
 
     def OpenSurvey(self):
