@@ -422,7 +422,7 @@ class getData(QThread):
         bmp_sensor = BMP085.BMP085(busnum=5)
         #Mean Sea Level = msl, pressione attuale al livello del mare, da bollettino meteo
         #https://www.osmer.fvg.it/stazioni.php?ln=&m=0
-        msl = 1015.00
+        msl = self.msl
 
         temperature = bmp_sensor.read_temperature()
         pressure = bmp_sensor.read_pressure()
@@ -431,6 +431,12 @@ class getData(QThread):
         altitude_adjusted = (44330.0*(1-pow(hpa_pressure/msl,1/5.255)))
         return temperature, hpa_pressure, altitude_adjusted
 
+
+    def calibrateBMP(Self):
+        msl = (hpa_pressure /(pow((1-(known_alt/44330.0)),5.255)))
+        self.msl = msl
+        #Add to configure
+        pass
 
     def stopRangefinder(self):
         line = ""
@@ -708,6 +714,7 @@ class MainWindow(QMainWindow):
             self.w.dxfmesh.setChecked(False)
         self.showDeviceInfo()
         self._projections = {}
+        self.msl = 1013.0
 
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit

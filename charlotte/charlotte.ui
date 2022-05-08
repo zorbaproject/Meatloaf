@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="misurazione">
        <attribute name="title">
@@ -617,52 +617,30 @@
             </layout>
            </item>
            <item>
-            <layout class="QVBoxLayout" name="verticalLayout_10">
-             <item>
-              <widget class="QPushButton" name="calibraTilt">
-               <property name="text">
-                <string>Inclinometro</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QVBoxLayout" name="verticalLayout_11">
-             <item>
-              <widget class="QPushButton" name="calibraLaser">
-               <property name="text">
-                <string>Distanzimetro</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QVBoxLayout" name="verticalLayout_12">
-             <item>
-              <widget class="QLabel" name="label_22">
-               <property name="text">
-                <string>Barometro</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QDoubleSpinBox" name="doubleSpinBox">
-               <property name="maximum">
-                <double>4000.000000000000000</double>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="pushButton">
+            <layout class="QGridLayout" name="gridLayout_5">
+             <item row="1" column="1">
+              <widget class="QPushButton" name="setMsl">
                <property name="text">
                 <string>Imposta pressione msl</string>
                </property>
               </widget>
              </item>
-             <item>
-              <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
+             <item row="2" column="1">
+              <widget class="QPushButton" name="setAlt">
+               <property name="text">
+                <string>Imposta altitudine attuale</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QDoubleSpinBox" name="actualMsl">
+               <property name="maximum">
+                <double>4000.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QDoubleSpinBox" name="actualAlt">
                <property name="minimum">
                 <double>-4000.000000000000000</double>
                </property>
@@ -671,10 +649,10 @@
                </property>
               </widget>
              </item>
-             <item>
-              <widget class="QPushButton" name="pushButton_2">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_22">
                <property name="text">
-                <string>Imposta altitudine attuale</string>
+                <string>Barometro</string>
                </property>
               </widget>
              </item>
