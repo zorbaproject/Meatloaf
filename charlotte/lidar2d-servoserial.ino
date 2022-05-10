@@ -1,31 +1,17 @@
-/*
-
- SoftwareSerial1:
- * RX is digital pin 10 (connect to TX of rangefinder) yellow
- * TX is digital pin 11 (connect to RX of rangefinder) orange
- SoftwareSerial2:
- * RX is digital pin 12 (connect to TX of rangefinder) blue
- * TX is digital pin 13 (connect to RX of rangefinder) green
-
- Note:
- Not all digital pins on the Mega and Mega 2560 support change interrupts,
- so only the following can be used for RX:
- 10, 11, 12, 13, 50, 51, 52, 53, 62, 63, 64, 65, 66, 67, 68, 69
-
- */
-#include <SoftwareSerial.h>
-
 #include <Servo.h>
 
-Servo myservo;
+Servo myservo;  // create servo object to control a servo
 
-int pos = 0;
+int pos = 0;    // variable to store the servo position
+
+bool continuous = false;
 
 int scan[360];
 
-SoftwareSerial mySerial(10, 11); // RX, TX
+int timeout = 1000;
+const int servopin = 6;
 
-
+//Arduino Mega has 4 hardware ports, we use Serial0 for USB, Serial1 and Serial2 for rangefinders
 
 void setup() {
   // Open serial communications and wait for port to open:
@@ -33,59 +19,116 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-  myservo.attach(9);
+  
+  myservo.attach(servopin);
 
+  Serial.println("LaserOn");
 
-  //Serial.println("Open");
-
-  // set the data rate for the SoftwareSerial port
-  mySerial.begin(19200);
-  mySerial.println("O");
+  // set the data rate for rangefinders
+  Serial1.begin(19200);
+  Serial1.println("O");
+  Serial2.begin(19200);
+  Serial2.println("O");
   for (int i = 0; i < 360; i++) {
     scan[i] = 0.0;
   }
+
+  //reset servo
+  for (pos = 180; pos >= 0; pos -= 1) { 
+    myservo.write(pos);              
+    delay(15);                       
+  }
 }
 
-void loop() { // run over and over
+void loop() {
+
+  bool single = false;
+  if (!continuous) {
+    while (!Serial.available());
+    String mycmd = Serial.readString();
+    //Serial.println(mycmd);
+    if (mycmd.indexOf('S') > -1) single = true;
+    if (mycmd.indexOf('C') > -1) continuous = true;
+    if (mycmd.indexOf('Q') > -1) {
+      single = false;
+      continuous = false;
+    }
+  }
+  if (single || continuous) {
+  
+  //Init array
+  for (int i = 0; i < 360; i++) {
+    scan[i] = 0.0;
+  }
+  
   //reset servo
   for (pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
     myservo.write(pos);              // tell servo to go to position in variable 'pos'
     delay(15);                       // waits 15ms for the servo to reach the position
   }
-  for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
-    // in steps of 1 degree
-    myservo.write(pos);              // tell servo to go to position in variable 'pos'
-    delay(15);                       // waits 15ms for the servo to reach the positio
-    mySerial.write("F");
-    char fullnum[6] = "000000";
+  
+  //start measure
+  for (pos = 0; pos < 180; pos += 1) { 
+    myservo.write(pos);              
+    delay(15);                       
+    Serial1.write("F");
+    Serial2.write("F");
+    char fullnum[7] = "000000";
+
+    if (Serial.available()) {
+    String mycmd = Serial.readString();
+    if (mycmd.indexOf('S') > -1) single = true;
+    if (mycmd.indexOf('C') > -1) continuous = true;
+    if (mycmd.indexOf('Q') > -1) {
+      Serial.println("Quit");
+      single = false;
+      continuous = false;
+      break;
+    }
+    }
+
     char mybuffer[50];
+    unsigned long myTime;
     int i = 0;
+    int v = 0;
+    int m = 0;
+    String mystr = "";
+    int size = 0;
     bool store = false;
-    Serial.println("Waiting for serial");
-    while (!mySerial.available());
-    Serial.println("Reading from serial");
-    int size = mySerial.readBytesUntil('\n',mybuffer,50);
-    Serial.println("Interpreting message");
-    for (int c = 0; c < size; c++) {
-      if (mybuffer[c] == 'm') store = false;
-      if (store && i < 6) {
-        fullnum[i] = mybuffer[c];
-        if (mybuffer[c] == ' ') fullnum[i] = '0';
-        i++;
-      }
-      if (mybuffer[c] == ':') store = true;
+    myTime = millis();
+    while (!Serial1.available() && (millis()-myTime) < timeout);
+    size = Serial1.readBytesUntil('\n',mybuffer,50);
+    mystr = String(mybuffer);
+    v = mystr.indexOf(':');
+    m = mystr.indexOf('m');
+    if ( v > 0 && m > 0) {
+      mystr.substring(v+1,m).toCharArray(fullnum,7);
     }
     float tmpnum = atof(fullnum);
     scan[pos] = int(tmpnum*100);
-    Serial.println(pos);
-    //Serial.println(tmpnum);
+
+    store = false;
+    i = 0;
+    strcpy(fullnum,"000000");
+    while (!Serial2.available() && (millis()-myTime) < timeout);
+    size = Serial2.readBytesUntil('\n',mybuffer,50);
+    mystr = String(mybuffer);
+    v = mystr.indexOf(':');
+    m = mystr.indexOf('m');
+    if ( v > 0 && m > 0) {
+      mystr.substring(v+1,m).toCharArray(fullnum,7);
+    }
+    float tmpnum2 = atof(fullnum);
+    scan[pos+180] = int(tmpnum2*100);
   }
 
   for (int i = 0; i < 360; i++) {
     //Serial.print(scan[i], 3);
-    Serial.print(scan[i]);
-    Serial.print(",");
+    Serial.print(scan[i]/100);
+    if (i<359) Serial.print(",");
   }
   Serial.println();
+  }
 
 }
+ 
