@@ -1275,9 +1275,10 @@ class MainWindow(QMainWindow):
         now = datetime.now()
         mydate = now.strftime("%d-%m-%Y")
         #header
-        csxtxt = "<csurvey version=\"1.11\" id=\"\"> \n<!-- "+mydate+" created by Charlotte --> \n  <properties id=\"\" name=\"\" origin=\"0\" creatid=\"TopoDroid\" creatversion=\"5.0.3h\" creatdate=\""+now.strftime("%Y-%m-%d")+"\" calculatemode=\"1\" calculatetype=\"2\" calculateversion=\"-1\" ringcorrectionmode=\"2\" nordcorrectionmode=\"0\" inversionmode=\"1\" designwarpingmode=\"1\" bindcrosssection=\"1\"> \n    <sessions> \n      <session date=\""+now.strftime("%Y.%m.%d")+"\" description=\""+cavename+"\" nordtype=\"0\" manualdeclination=\"0\" > \n      </session> \n    </sessions>"
+        #TODO: set origin
+        csxtxt = "<csurvey version=\"1.12\" id=\"a6278b65-2d7a-4708-ad16-3693726b7e94\">\n  <properties id=\"\" name=\"\" creatid=\"cSurvey\" creatversion=\"1.12\" creatdate=\""+now.strftime("%Y-%m-%d")+"T05:39:28.8212330-07:00\" creat_postprocessed=\"1\" origin=\"REGINA1_0\" calculatemode=\"1\" calculatetype=\"2\" calculateversion=\"3\" ringcorrectionmode=\"2\" nordcorrectionmode=\"0\" inversionmode=\"1\" designwarpingmode=\"1\" bindcrosssection=\"1\" threedlochshowsplay=\"0\" slpeo=\"1\">\n    <sessions>\n      <session date=\""+now.strftime("%Y-%m-%d")+"T00:00:00.0000000\" description=\""+cavename+"\" team=\"?\" depthtype=\"0\" nordtype=\"0\" declinationenabled=\"0\" declination=\"0.00\" sidemeasuresreferto=\"1\" />\n    </sessions>\n"
         #caveinfo
-        csxtxt = csxtxt + "<caveinfos> \n      <caveinfo name=\""+cavename.upper()+"\" > \n        <branches> \n          <branch name=\"\"> \n          </branch> \n        </branches> \n      </caveinfo> \n    </caveinfos> \n    <gps enabled=\"0\" refpointonorigin=\"0\" geo=\"WGS84\" format=\"\" sendtotherion=\"0\" /> \n  </properties>"
+        csxtxt = csxtxt + "    <caveinfos>\n      <caveinfo id=\"\" name=\""+cavename.upper()+"\">\n        <branches>\n          <branch name=\"regina1\">\n            <branches>\n              <branch name=\"regina1\">\n                <branches />\n              </branch>\n            </branches>\n          </branch>\n        </branches>\n      </caveinfo>\n    </caveinfos>\n    <cavevisibilityprofiles />\n    <gps refpointonorigin=\"1\" format=\"\" />\n    <designproperties />\n    <datatables>\n      <segments>\n        <datafield name=\"import_source\" type=\"0\" />\n        <datafield name=\"import_date\" type=\"5\" />\n      </segments>\n      <trigpoints />\n      <designitems />\n    </datatables>\n    <hlsds>\n      <hlsd id=\"_ring\" n=\"Loops\" colors=\"-16776961\" sz=\"1.67\" at=\"1\" cnd=\"\" sys=\"1\" />\n      <hlsd id=\"_entrance\" n=\"Entrance\" colors=\"-65536\" at=\"0\" cnd=\"vb#&gt;Details.Element.isentrance\" sys=\"1\" />\n      <hlsd id=\"_exploration\" n=\"Points need exploration\" colors=\"-7278960\" at=\"0\" cnd=\"vb#&gt;Details.Element.isinexploration\" sys=\"1\" />\n      <hlsd id=\"_gpsdefaultfix\" n=\"Stations with GPS coordinates\" colors=\"-16751616\" at=\"0\" cnd=\"vb#&gt;not Details.Element.coordinate.isempty andalso Details.Element.coordinate.fix=0\" sys=\"1\" />\n      <hlsd id=\"_gpsmanualfix\" n=\"Stations with GPS coordinates (manual fix)\" colors=\"-7357301\" at=\"0\" cnd=\"vb#&gt;not Details.Element.coordinate.isempty andalso Details.Element.coordinate.fix=1\" sys=\"1\" />\n      <hlsd id=\"_shotwithnote\" n=\"Stations with note\" colors=\"-10496\" at=\"0\" cnd=\"vb#&gt;Details.Element.note&lt;&gt;&quot;&quot;\" sys=\"1\" />\n      <hlsd id=\"_stationwithnote\" n=\"Segments with note\" colors=\"-10496\" at=\"1\" cnd=\"vb#&gt;Details.Element.note&lt;&gt;&quot;&quot;\" sys=\"1\" />\n      <hlsd id=\"_stationbyalt\" n=\"Stations by altitude\" colors=\"-8355712\" at=\"0\" cnd=\"vb#&gt;&gt;public function GetHighlight(Details as cStationHighlightDetails) as boolean&#xD;&#xA;Details.meters.color = Survey.calculate.trigpoints.zs.GetScaleColor(Survey.calculate.trigpoints(Details.element).point.z)&#xD;&#xA;Return True&#xD;&#xA;end function\" sys=\"1\" />\n      <hlsd id=\"_shotbyalt\" n=\"Segments by altitude\" colors=\"-8355712\" at=\"1\" cnd=\"vb#&gt;&gt;public function GetHighlight(Details as cShotHighlightDetails) as boolean&#xD;&#xA;Details.meters.colors = {Survey.calculate.trigpoints.zs.GetScaleColor(Survey.calculate.trigpoints(Details.element.getfromtrigpoint).point.z), Survey.calculate.trigpoints.zs.GetScaleColor(Survey.calculate.trigpoints(Details.element.gettotrigpoint).point.z)}&#xD;&#xA;Return True&#xD;&#xA;end function\" sys=\"1\" />\n    </hlsds>\n  </properties>\n  <attachments />"
         csxtxt = csxtxt + "\n<segments>"
 
         i = 0
@@ -1291,15 +1292,14 @@ class MainWindow(QMainWindow):
                     mybranch = str(b)
 
             #csvtxt = csvtxt + str(row["topographic"]['sideTilt']) + ","
+            
+            segFrom = cavename.upper() + "_" + str(row["from"])
+            segTo = cavename.upper() + "_" + str(row["to"])
 
-            #csxtxt = csxtxt + "<segment id=\"\" cave=\""+cavename.upper()+"\" branch=\"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["from"]) +"("+str(i)+")\" cut=\"1\" splay=\"1\" exclude=\"1\" distance=\"1.00\" bearing=\"293.0\" inclination=\"0.0\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\"0\" r=\"0\" u=\"0\" d=\"0\" distox=\"\" >\n    </segment>"
-            i = i + 1
-            #csxtxt = csxtxt + "<segment id=\"\" cave=\""+cavename.upper()+"\" branch=\"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["from"]) +"("+str(i)+")\" cut=\"1\" splay=\"1\" exclude=\"1\" distance=\"2.00\" bearing=\"113.0\" inclination=\"0.0\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\"0\" r=\"0\" u=\"0\" d=\"0\" distox=\"\" >\n    </segment>"
-            i = i + 1
-            #csxtxt = csxtxt + "<segment id=\"\" cave=\""+cavename.upper()+"\" branch=\"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["from"]) +"("+str(i)+")\" cut=\"1\" splay=\"1\" exclude=\"1\" direction=\"2\" distance=\"3.00\" bearing=\"0.0\" inclination=\"90.0\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\"0\" r=\"0\" u=\"0\" d=\"0\" distox=\"\" >\n    </segment>"
-            i = i + 1
-            #csxtxt = csxtxt + "<segment id=\"\" cave=\""+cavename.upper()+"\" branch=\"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["from"]) +"("+str(i)+")\" cut=\"1\" splay=\"1\" exclude=\"1\" direction=\"2\" distance=\"1.00\" bearing=\"0.0\" inclination=\"-90.0\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\"0\" r=\"0\" u=\"0\" d=\"0\" distox=\"\" >\n    </segment>"
-            i = i + 1
+            csxtxt = csxtxt + "<segment id=\"bf52f3d0-7450-4998-b28b-e0163ac3c4ae\" from=\""+segFrom+"\" to=\""+segTo+"\" distance=\"1.43\" inclination=\"-30.48\" bearing=\"40.42\" l=\"0.48\" r=\"1.00\" u=\"0.35\" d=\"0.05\" cave=\"regina1\" branch=\"regina1\regina1\" session=\"20220503_regina1\" plansplayborderinclinationrange=\"-90.0;90.0\" profilesplayborderposinclinationrange=\"0.0;90.0\" profilesplayborderneginclinationrange=\"-90.0;0.0\">\n      <data>\n        <srcdata st=\""+segTo+"\" sf=\""+segFrom+"\" d=\"1.43\" i=\"-30.48\" b=\"40.42\" dr=\"0\" />\n"
+            csxtxt = csxtxt + "            <olddata st=\""+segTo+"\" sf=\""+segFrom+"\" d=\"0\" i=\"0\" b=\"0\" dr=\"0\" />\n        <data st=\""+segTo+"\" sf=\""+segFrom+"\" d=\"1.430\" i=\"-30.479\" b=\"40.3864969847901\" dr=\"0\" />\n        <planpd c=\"1\" of=\"\" ot=\"\" ofpx=\"0\" ofpy=\"0\" otpx=\"0\" otpy=\"0\" ofsprx=\"0\" ofspry=\"0\" ofsplx=\"0\" ofsply=\"0\" otsprx=\"0\" otspry=\"0\" otsplx=\"0\" otsply=\"0\" ofbr=\"0\" ofbl=\"0\" otbr=\"0\" otbl=\"0\" f=\""+segFrom+"\" t=\""+segTo+"\" fpx=\"0\" fpy=\"0\" tpx=\"0.7986\" tpy=\"-0.9388\" fsprx=\"0.761691\" fspry=\"0.6479404\" fsplx=\"-0.36561169447124\" fsply=\"-0.311011396681647\" tsprx=\"1.4079528\" tspry=\"-0.4204477\" tsplx=\"0.623411063065864\" tsply=\"-1.087826294243289\" fbr=\"130.3864969847901\" fbl=\"310.3864969847901\" tbr=\"130.3864969847901\" tbl=\"310.3864969847901\">\n          <fspds fp=\"0\" />\n          <tspds fp=\"0\" />\n        </planpd>\n"
+            csxtxt = csxtxt + "            <profilepd c=\"1\" of=\"\" ot=\"\" ofpx=\"0\" ofpy=\"0\" otpx=\"0\" otpy=\"0\" ofspux=\"0\" ofspuy=\"0\" ofspdx=\"0\" ofspdy=\"0\" otspux=\"0\" otspuy=\"0\" otspdx=\"0\" otspdy=\"0\" f=\""+segFrom+"\" t=\""+segTo+"\" fpx=\"0\" fpy=\"0.0000\" tpx=\"1.23252075033242\" tpy=\"0.7254\" fspux=\"0\" fspuy=\"-0.3500\" fspdx=\"0\" fspdy=\"0.0500\" tspux=\"1.23252075033242\" tspuy=\"0.3154\" tspdx=\"1.23252075033242\" tspdy=\"1.1754\">\n          <fspds fp=\"0\" />\n          <tspds fp=\"0\" />\n          <surfaceprofilepd />\n        </profilepd>\n        <sds />\n      </data>\n      <attachments />\n      <datarow>compass|2022-05-05T05:45:27.1944770-07:00</datarow>\n    </segment>"
+            
             csxtxt = csxtxt + "<segment id=\""+str(s)+"\" cave=\""+cavename.upper()+"\" branch=\""+mybranch+"\" session=\""+mydate+"_"+cavename+"\" from=\""+ str(row["from"]) +"\" to=\""+ str(row["to"]) +"\" distance=\""+ str(row["topographic"]['distance']) +"\" bearing=\""+ str(row["topographic"]['heading']) +"\" inclination=\""+ str(row["topographic"]['frontalInclination']) +"\" g=\"0.0\" m=\"0.0\" dip=\"0.0\" l=\""+ str(row["walls"]['left']) +"\" r=\""+ str(row["walls"]['right']) +"\" u=\""+ str(row["walls"]['up']) +"\" d=\""+ str(row["walls"]['down']) +"\" distox=\"\" >\n    </segment>"
             s = s + 5
 
@@ -1400,6 +1400,7 @@ class MainWindow(QMainWindow):
             
         #Probabilmente è troppo complicato calcolare l'asse esatto https://www.speleo.it/site/images/catasto_grotte/scheda_3_ssi_normativa_rid.pdf
         lunghezza = 0.0  #Saranno inclusi i pozzi
+        lunghezzarami = {}
         dislivello = 0.0
         dislivelloBar = 0.0
         altMin = 10000.0
@@ -1620,6 +1621,56 @@ class MainWindow(QMainWindow):
             spaccatoYZ.addPath(ScaleSYZ, QPen(Qt.black, 0.1))
             tmpSYZScale1Text = spaccatoYZ.addText(str(scaleStep), QFont("Arial", 1))
             tmpSYZScale1Text.setPos(QPointF(syzBounding[0]-pExtramargin+scaleStep+labelMargin, syzBounding[1]-pExtramargin+scaleMargin+labelMargin))
+        #Calculate data
+        BarMin = 10000.0
+        BarMax = -10000.0
+        for row in Cfile["measurements"]:
+            try:
+                lunghezza = lunghezza + row["topographic"]["distance"]
+                for b in range(len(self.branches)):
+                    if row["to"] in self.branches[b]:
+                        try:
+                            oldbranchl = lunghezzarami[str(b)]
+                        except:
+                            oldbranchl = 0.0
+                        lunghezzarami[str(b)] = oldbranchl + row["topographic"]["distance"]
+            except:
+                pass
+            try:
+                if row["ambient"]["bar_altitude"] == -10000:
+                    continue
+                if row["ambient"]["bar_altitude"] < BarMin:
+                    BarMin = row["ambient"]["bar_altitude"]
+                if row["ambient"]["bar_altitude"] > BarMax:
+                    BarMax = row["ambient"]["bar_altitude"]
+            except:
+                pass
+        try:
+            dislivelloBar = BarMax - BarMin
+        except:
+            pass
+        try:
+            self.w.statusbar.showMessage("Lunghezza poligonale: "+str("{:.2f}".format(lunghezza))+" Dislivello: "+str("{:.2f}".format(dislivello))+" Dislivello barometrico: "+str("{:.2f}".format(dislivelloBar)))
+            print("Lunghezza rami:")
+            print(lunghezzarami)
+            sStatText = "Polyline length (with pits depth): "+str("{:.2f}".format(lunghezza))+" \nHeight difference: "+str("{:.2f}".format(dislivello))+" \nBarometric height difference: "+str("{:.2f}".format(dislivelloBar))
+            tmpSXZScale1Text = spaccatoXZ.addText(str(sStatText), QFont("Arial", 1))
+            tmpSXZScale1Text.setPos(QPointF(sxzBounding[0]-pExtramargin+labelMargin, sxzBounding[1]-pExtramargin+scaleMargin+5))
+            tmpSYZScale1Text = spaccatoYZ.addText(str(sStatText), QFont("Arial", 1))
+            tmpSYZScale1Text.setPos(QPointF(syzBounding[0]-pExtramargin+labelMargin, syzBounding[1]-pExtramargin+scaleMargin+5))
+        except:
+            pass
+        brtextspace = 1
+        brtexty = pBounding[1]-pExtramargin+scaleMargin+5
+        for b in range(len(self.branches)):
+            try:
+                branchtext = "Branch start: "+str(self.branches[b][0]) + " Branch end: "+str(self.branches[b][-1]) + " Branch length: "+str("{:.2f}".format(lunghezzarami[str(b)]))
+                tmpPBrText = pianta.addText(str(branchtext), QFont("Arial", 1))
+                tmpPBrText.setPos(QPointF(pBounding[0]-pExtramargin+labelMargin, brtexty))
+                brtexty = brtexty + brtextspace
+                print(branchtext)
+            except:
+                pass
         #show in graphicsview
         self.w.pianta.setScene(pianta)
         #TODO: aggiungere opzione in gui per scegliere XZ o YZ
@@ -1641,30 +1692,6 @@ class MainWindow(QMainWindow):
         self.saveSvg(spaccatoXZ, SXZfilename, "Spaccato")
         if self.dokml:
             kmlDoc.save(cavefolder + "/" + cleanedname + ".kml")
-        BarMin = 10000.0
-        BarMax = -10000.0
-        for row in Cfile["measurements"]:
-            try:
-                lunghezza = lunghezza + row["topographic"]["distance"]
-            except:
-                pass
-            try:
-                if row["ambient"]["bar_altitude"] == -10000:
-                    continue
-                if row["ambient"]["bar_altitude"] < BarMin:
-                    BarMin = row["ambient"]["bar_altitude"]
-                if row["ambient"]["bar_altitude"] > BarMax:
-                    BarMax = row["ambient"]["bar_altitude"]
-            except:
-                pass
-        try:
-            dislivelloBar = BarMax - BarMin
-        except:
-            pass
-        try:
-            self.w.statusbar.showMessage("Lunghezza poligonale: "+str("{:.2f}".format(lunghezza))+" Dislivello: "+str("{:.2f}".format(dislivello))+" Dislivello barometrico: "+str("{:.2f}".format(dislivelloBar)))
-        except:
-            pass
 
     def rotateNorth(self, point):
         #in our coordinates system, north goes from left to right. We need to change it from down to up: rotate 90° counter-clockwise
