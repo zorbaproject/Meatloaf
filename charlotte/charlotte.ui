@@ -22,7 +22,7 @@
       </property>
       <widget class="QWidget" name="misurazione">
        <attribute name="title">
-        <string>Misurazione</string>
+        <string>Measurement</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
@@ -37,7 +37,7 @@
           <item>
            <widget class="QPushButton" name="selectcave">
             <property name="text">
-             <string>Seleziona grotta</string>
+             <string>Select survey</string>
             </property>
            </widget>
           </item>
@@ -48,7 +48,7 @@
           <item>
            <widget class="QLabel" name="label_4">
             <property name="text">
-             <string>Distanza</string>
+             <string>Distance</string>
             </property>
            </widget>
           </item>
@@ -62,7 +62,7 @@
           <item>
            <widget class="QLabel" name="label_3">
             <property name="text">
-             <string>Direzione</string>
+             <string>Heading</string>
             </property>
            </widget>
           </item>
@@ -79,7 +79,7 @@
           <item>
            <widget class="QLabel" name="label_5">
             <property name="text">
-             <string>Pendenza</string>
+             <string>Inclination</string>
             </property>
            </widget>
           </item>
@@ -96,7 +96,7 @@
           <item>
            <widget class="QLabel" name="label_6">
             <property name="text">
-             <string>Incl. lato</string>
+             <string>Side tilt</string>
             </property>
            </widget>
           </item>
@@ -117,7 +117,7 @@
           <item>
            <widget class="QLabel" name="label_7">
             <property name="text">
-             <string>Sinistra</string>
+             <string>Left</string>
             </property>
            </widget>
           </item>
@@ -127,7 +127,7 @@
           <item>
            <widget class="QLabel" name="label_8">
             <property name="text">
-             <string>Destra</string>
+             <string>Right</string>
             </property>
            </widget>
           </item>
@@ -137,7 +137,7 @@
           <item>
            <widget class="QLabel" name="label_9">
             <property name="text">
-             <string>Sopra</string>
+             <string>Up</string>
             </property>
            </widget>
           </item>
@@ -147,7 +147,7 @@
           <item>
            <widget class="QLabel" name="label_10">
             <property name="text">
-             <string>Sotto</string>
+             <string>Down</string>
             </property>
            </widget>
           </item>
@@ -161,7 +161,17 @@
           <item>
            <widget class="QPushButton" name="manualMode">
             <property name="text">
-             <string>Modalità manuale</string>
+             <string>Manual mode</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="nolidar">
+            <property name="text">
+             <string>No LIDAR</string>
             </property>
             <property name="checkable">
              <bool>true</bool>
@@ -171,7 +181,7 @@
           <item>
            <widget class="QLabel" name="label">
             <property name="text">
-             <string>Dal punto</string>
+             <string>From point</string>
             </property>
            </widget>
           </item>
@@ -181,7 +191,7 @@
           <item>
            <widget class="QLabel" name="label_2">
             <property name="text">
-             <string>Al punto</string>
+             <string>To point</string>
             </property>
            </widget>
           </item>
@@ -203,7 +213,7 @@
                <string notr="true">background-color: rgb(0, 255, 0);</string>
               </property>
               <property name="text">
-               <string>Salva misurazione</string>
+               <string>Save data</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -213,7 +223,7 @@
             <item>
              <widget class="QPushButton" name="puntofisso">
               <property name="text">
-               <string>Misura verso punto fisso</string>
+               <string>Fixed spot measure</string>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -326,7 +336,7 @@
             <item>
              <widget class="QPushButton" name="readGPS">
               <property name="text">
-               <string>Leggi GPS</string>
+               <string>Read GPS position</string>
               </property>
              </widget>
             </item>
@@ -338,7 +348,7 @@
       </widget>
       <widget class="QWidget" name="tabella">
        <attribute name="title">
-        <string>Tabella</string>
+        <string>Table</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
@@ -346,21 +356,21 @@
           <item>
            <widget class="QPushButton" name="deleterow">
             <property name="text">
-             <string>Elimina selezionato</string>
+             <string>Delete selected</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="deletefixrow">
             <property name="text">
-             <string>Elimina e correggi</string>
+             <string>Delete and fix</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="savetable">
             <property name="text">
-             <string>Salva modifiche</string>
+             <string>Save edits</string>
             </property>
            </widget>
           </item>
@@ -373,7 +383,7 @@
       </widget>
       <widget class="QWidget" name="risultato">
        <attribute name="title">
-        <string>Risultato</string>
+        <string>Results</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
@@ -479,13 +489,13 @@
       </widget>
       <widget class="QWidget" name="tab">
        <attribute name="title">
-        <string>Impostazioni</string>
+        <string>Settings</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
          <widget class="QGroupBox" name="groupBox_2">
           <property name="title">
-           <string>Salvataggio </string>
+           <string>Saving results</string>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_6">
            <item>
@@ -493,7 +503,7 @@
              <item>
               <widget class="QLabel" name="label_15">
                <property name="text">
-                <string>Cartella dei rilievi: </string>
+                <string>Surveys folder: </string>
                </property>
               </widget>
              </item>
@@ -507,7 +517,7 @@
              <item>
               <widget class="QCheckBox" name="openlastcave">
                <property name="text">
-                <string>Inizia sempre dall'ultima grotta</string>
+                <string>Always start from last survey</string>
                </property>
                <property name="checked">
                 <bool>false</bool>
@@ -532,7 +542,7 @@
         <item>
          <widget class="QGroupBox" name="groupBox">
           <property name="title">
-           <string>Data e ora </string>
+           <string>Date and time</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_4">
            <item row="0" column="0">
@@ -541,7 +551,7 @@
            <item row="1" column="0">
             <widget class="QLabel" name="label_17">
              <property name="text">
-              <string>Secondi tra una scansione automatica e l'altra</string>
+              <string>Seconds between automatic scans</string>
              </property>
             </widget>
            </item>
@@ -550,14 +560,14 @@
              <item>
               <widget class="QPushButton" name="savedatetime">
                <property name="text">
-                <string>Imposta</string>
+                <string>Set</string>
                </property>
               </widget>
              </item>
              <item>
               <widget class="QPushButton" name="getGPStime">
                <property name="text">
-                <string>Imposta da GPS</string>
+                <string>Set from GPS</string>
                </property>
               </widget>
              </item>
@@ -582,7 +592,7 @@
            <item row="0" column="0">
             <widget class="QCheckBox" name="checkBox">
              <property name="text">
-              <string>Utilizza il Lidar per misure laterali</string>
+              <string>Use Lidar for LRUD distances</string>
              </property>
              <property name="checked">
               <bool>true</bool>
@@ -592,7 +602,7 @@
            <item row="0" column="1">
             <widget class="QCheckBox" name="checkBox_2">
              <property name="text">
-              <string>Esegui media su 45° per le distanze</string>
+              <string>Calculate average distance for 45° angle</string>
              </property>
             </widget>
            </item>
@@ -602,7 +612,7 @@
         <item>
          <widget class="QGroupBox" name="groupBox_3">
           <property name="title">
-           <string>Calibrazione </string>
+           <string>Calibration</string>
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_11">
            <item>
@@ -610,9 +620,61 @@
              <item>
               <widget class="QPushButton" name="calibraBussola">
                <property name="text">
-                <string>Bussola</string>
+                <string>Compass</string>
                </property>
               </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_14">
+               <item>
+                <widget class="QLabel" name="label_23">
+                 <property name="text">
+                  <string>Declination:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="decDeg">
+                 <property name="minimum">
+                  <number>-360</number>
+                 </property>
+                 <property name="maximum">
+                  <number>360</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_24">
+                 <property name="text">
+                  <string>°</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="decMin">
+                 <property name="minimum">
+                  <number>-100</number>
+                 </property>
+                 <property name="maximum">
+                  <number>100</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_25">
+                 <property name="text">
+                  <string>'</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="setDeclination">
+                 <property name="text">
+                  <string>Set</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
             </layout>
            </item>
@@ -621,14 +683,14 @@
              <item row="1" column="1">
               <widget class="QPushButton" name="setMsl">
                <property name="text">
-                <string>Imposta pressione msl</string>
+                <string>Set msl pressure</string>
                </property>
               </widget>
              </item>
              <item row="2" column="1">
               <widget class="QPushButton" name="setAlt">
                <property name="text">
-                <string>Imposta altitudine attuale</string>
+                <string>Set current altitude</string>
                </property>
               </widget>
              </item>
@@ -652,7 +714,7 @@
              <item row="0" column="0">
               <widget class="QLabel" name="label_22">
                <property name="text">
-                <string>Barometro</string>
+                <string>Barometer</string>
                </property>
               </widget>
              </item>
@@ -661,17 +723,24 @@
           </layout>
          </widget>
         </item>
+        <item>
+         <widget class="QLabel" name="label_26">
+          <property name="text">
+           <string>Please, reboot charlotte to apply changes in settings.</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
       <widget class="QWidget" name="tab_3">
        <attribute name="title">
-        <string>Modalità</string>
+        <string>Mode</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_7">
         <item>
          <widget class="QPushButton" name="exit">
           <property name="text">
-           <string>Chiudi il programma</string>
+           <string>Exit charlotte</string>
           </property>
          </widget>
         </item>
@@ -685,21 +754,21 @@
         <item>
          <widget class="QPushButton" name="touch_calibrate">
           <property name="text">
-           <string>Calibra touchscreen</string>
+           <string>Calibrate touchscreen</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="shutdown">
           <property name="text">
-           <string>Spegni</string>
+           <string>Power off</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="reboot">
           <property name="text">
-           <string>Riavvia</string>
+           <string>Reboot</string>
           </property>
          </widget>
         </item>
@@ -707,7 +776,7 @@
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
-        <string>Aiuto</string>
+        <string>About</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_5">
         <item>
@@ -727,14 +796,14 @@ Permette di realizzare rilievi topografici vettoriali delle cavità naturali e a
         <item>
          <widget class="QLabel" name="deviceinfo">
           <property name="text">
-           <string>Informazioni sul dispositivo:</string>
+           <string>Device info:</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="showDeviceInfo">
           <property name="text">
-           <string>Aggiorna informazioni sul dispositivo</string>
+           <string>Update device info</string>
           </property>
          </widget>
         </item>
