@@ -264,7 +264,11 @@ class getData(QThread):
         self.distancecommand = b'D'
         self.ledoncode = "OK!"  #This is the response to look for after turning on led
         self.distancecode = "m," #This is the response to look for after requesting a distance measurement
-        self.declination = (4,3)    #Degrees, minutes (https://www.magnetic-declination.com/#)
+        try:
+            self.declination = (self.myparent.mycfg['declination'][0],self.myparent.mycfg['declination'][1])
+        except:
+            self.declination = (4,3)    #Degrees, minutes (https://www.magnetic-declination.com/#)
+        print("Declination: " + str(self.declination))
         #Cerco i sensori
         try:
             self.lsmbus = self.getLSM303_bus(1)
@@ -272,7 +276,7 @@ class getData(QThread):
             print("Unable to find LSM303DLH compass and inclinometer.")
             self.lsmbus = None
         try:
-            self.compass3 = hmc5883l(port = 3, gauss = 4.7, declination = (0,0))
+            self.compass3 = hmc5883l(port = 3, gauss = 4.7, declination = self.declination)
         except:
             print("Unable to find HCM5883L compass and inclinometer.")
             self.compass3 = None
@@ -294,6 +298,7 @@ class getData(QThread):
         self.lidarAddress = self.findUSBaddress("cp210x")
         # "dmesg | grep ': cp210x converter detected' |sed 's/\[.*\] cp210x \(.*\):.*/\1/g' | tail -n1"
         print("Lidar Address: "+self.lidarAddress)
+        
 
 
     def __del__(self):
@@ -355,8 +360,14 @@ class getData(QThread):
                 self.requiredData["frontalInclination"] = 0.0
             try:
                 declination = (0,0)
-                heading1 = self.get_heading(xMag,yMag,zMag, declination)
-                heading3 = self.compass3.heading()
+                headSurveys = 10
+                heading1 = 0
+                heading3 = 0
+                for i in range(headSurveys):
+                    xMag,yMag,zMag = self.getLSM303_heading(self.lsmbus)
+                    heading1 = heading1 + (self.get_heading(xMag,yMag,zMag, self.declination)/headSurveys)
+                    heading3 = heading3 + (self.compass3.heading()/headSurveys)
+                    time.sleep(0.1)
                 print("heading 0° incl: " + str(heading1))
                 print("heading 90° incl: " + str(heading3))
                 if bool(self.requiredData["frontalInclination"] > -45 and self.requiredData["frontalInclination"] < 45) or bool(self.requiredData["frontalInclination"] > 135 and self.requiredData["frontalInclination"] < -135):
@@ -393,6 +404,8 @@ class getData(QThread):
 
     def scanYDLidarX4(self):
         myscan = [0.0 for deg in range(360)] #we have one value for every angle
+        if self.myparent.w.nolidar.isChecked():
+            return myscan
         Obj = PyLidar3.YdLidarX4(self.lidarport)
         if(Obj.Connect()):
             gen = Obj.StartScanning()
@@ -673,6 +686,8 @@ class MainWindow(QMainWindow):
         self.w.getGPStime.clicked.connect(self.getGPStime)
         self.w.showDeviceInfo.clicked.connect(self.showDeviceInfo)
         self.w.zoom.valueChanged.connect(self.zoomDrawings)
+        self.w.setDeclination.clicked.connect(self.setDeclination)
+        self.w.calibraBussola.clicked.connect(self.calibraBussola)
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
         self.w.piantacombo.currentTextChanged.connect(self.piantacombo)
         self.w.spaccatocombo.currentTextChanged.connect(self.spaccatocombo)
@@ -798,6 +813,13 @@ class MainWindow(QMainWindow):
             os.system("sudo cp "+conffile+ " " +conffile+"."+datetime.now().strftime("%Y%m%d%H%M%S"))
             os.system("sudo mv "+tmpconf+ " " +conffile)
             self.w.statusbar.showMessage("Calibration values written in /usr/share/X11/xorg.conf.d/40-libinput.conf")
+            
+    def calibraBussola(self):
+        #https://learn.adafruit.com/lsm303-accelerometer-slash-compass-breakout/calibration?view=all
+        #https://github.com/adafruit/Adafruit_LSM303DLH_Mag/blob/master/examples/calibration/calibration.ino
+        #https://thecavepearlproject.org/2015/05/22/calibrating-any-compass-or-accelerometer-for-arduino/
+        #https://www.instructables.com/Configure-read-data-calibrate-the-HMC5883L-digital/
+        print("For high precision calibration, please look at this software: https://web.archive.org/web/20200221040955/http://www.varesano.net/blog/fabio/freeimu-magnetometer-and-accelerometer-calibration-gui-alpha-version-out")
 
     def newCave(self):
         self.w.fromP.setText("0")
@@ -817,7 +839,8 @@ class MainWindow(QMainWindow):
         'y': {'min': '', 'max':''},
         'z': {'min': '', 'max':''},
         'distance': ''
-        }
+        },
+        'declination': [0,0]
         }
         for key in cfgtemplate:
             if key not in self.mycfg or len(self.mycfg[key])==0:
@@ -837,6 +860,11 @@ class MainWindow(QMainWindow):
                 os.mkdir(self.mycfg["outputfolder"])
             except:
                 pass
+        try:
+            self.w.decDeg.setValue(self.mycfg['declination'][0])
+            self.w.decMin.setValue(self.mycfg['declination'][1])
+        except:
+            pass
         self.w.outputfolder.setText(self.mycfg["outputfolder"])
         if self.mycfg["startfromlastcave"]=='True':
             self.w.openlastcave.setChecked(True)
@@ -849,6 +877,10 @@ class MainWindow(QMainWindow):
         self.mycfg['startfromlastcave'] = "False"
         if self.w.openlastcave.isChecked():
             self.mycfg['startfromlastcave'] = "True"
+        self.savePersonalCFG()
+        
+    def setDeclination(self):
+        self.mycfg['declination'] = [self.w.decDeg.value(),self.w.decMin.value()]
         self.savePersonalCFG()
 
     def savePersonalCFG(self):
@@ -2305,3 +2337,4 @@ if __name__ == "__main__":
     w.setFixedSize(640,480)
     w.show()
     sys.exit(app.exec_())
+    
