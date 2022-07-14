@@ -622,6 +622,9 @@
                <property name="text">
                 <string>Compass</string>
                </property>
+               <property name="checkable">
+                <bool>true</bool>
+               </property>
               </widget>
              </item>
              <item>
