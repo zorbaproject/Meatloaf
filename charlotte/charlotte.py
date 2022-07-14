@@ -57,6 +57,9 @@ from PySide2.QtWidgets import QTableWidget
 from PySide2.QtWidgets import QTableWidgetItem
 from PySide2.QtWidgets import QTableWidgetSelectionRange
 from PySide2.QtWidgets import QGraphicsScene
+from PySide2.QtWidgets import QDialog
+from PySide2.QtWidgets import QVBoxLayout
+from PySide2.QtWidgets import QDialogButtonBox
 from PySide2.QtSvg import QSvgGenerator
 from PySide2.QtGui import QPainter
 from PySide2.QtGui import QPainterPath
@@ -248,6 +251,7 @@ class getGPS(QThread):
 
 class getData(QThread):
     GotScan = Signal(list)
+    CompassCal = Signal(dict)
     #######################################Here we read temperature, pressure, distance, and 3-axis position
     def __init__(self, parent, mydata = ""):
         QThread.__init__(self)
@@ -328,14 +332,61 @@ class getData(QThread):
     def run(self):
         global toSleep
         while True:
+            #Compass calibration mode
+            if self.myparent.w.calibraBussola.isChecked():
+                headCalSurveys = 300
+                while True:
+                    if self.myparent.w.manualMode.isChecked():
+                        break
+                    time.sleep(0.1)
+                try:
+                    self.myparent.compassdialoglbl.setText("Start moving compass...")
+                    #self.myparent.compassdialoglbl.setText("Please move compass all around for "+str(int(headCalSurveys*0.1))" seconds")
+                    heading1max = -360
+                    heading3max = -360
+                    heading1min = 360
+                    heading3min = 360
+                    MagMinX = 1000000
+                    MagMaxX = -1000000
+                    MagMinY = 1000000
+                    MagMaxY = -1000000
+                    MagMinZ = 1000000
+                    MagMaxZ = -1000000
+                    #https://learn.adafruit.com/lsm303-accelerometer-slash-compass-breakout/calibration?view=all
+                    #https://github.com/adafruit/Adafruit_LSM303DLH_Mag/blob/master/examples/calibration/calibration.ino
+                    #https://thecavepearlproject.org/2015/05/22/calibrating-any-compass-or-accelerometer-for-arduino/
+                    #https://www.instructables.com/Configure-read-data-calibrate-the-HMC5883L-digital/
+                    for i in range(headCalSurveys):
+                        xMag,yMag,zMag = self.getLSM303_heading(self.lsmbus)
+                        if xMag < MagMinX: MagMinX = xMag
+                        if xMag > MagMaxX: MagMaxX = xMag
+                        if yMag < MagMinY: MagMinY = yMag
+                        if yMag > MagMaxY: MagMaxY = yMag
+                        if zMag < MagMinZ: MagMinZ = zMag
+                        if zMag > MagMaxZ: MagMaxZ = zMag
+                        #heading1 = self.get_heading(xMag,yMag,zMag, self.declination)
+                        heading3 = self.compass3.heading()
+                        if heading3 < heading3min: heading3min = heading3
+                        if heading3 > heading3max: heading3max = heading3
+                        self.myparent.compassdialoglbl.setText("Please move compass all around for "+str(int((headCalSurveys-i)*0.1))+" seconds \n"+str([xMag,yMag,zMag]))
+                        time.sleep(0.1)
+                    mycompasscal = {"1":{"MagMinX":MagMinX,"MagMaxX":MagMaxX,"MagMinY":MagMinY,"MagMaxY":MagMaxY,"MagMinZ":MagMinZ,"MagMaxZ":MagMaxZ}, "3":{"max":heading3max,"min":heading3min}}
+                    self.myparent.compassdialoglbl.setText("Done")
+                    self.CompassCal.emit(mycompasscal)
+                except:
+                    pass
+                continue
+            #Manual mode
             if self.myparent.w.manualMode.isChecked():
                 self.stopRangefinder()
                 sleep(toSleep)
                 continue
+            #Missing lidar mode
             if self.lidarport != None:
                 myscan = self.scanYDLidarX4()
                 #self.myparent.LidarScanDone(myscan)
                 self.GotScan.emit(myscan)
+            #Normal mode
             self.requiredData = {}
             try:
                 self.requiredData["temperature"] = self.readTemp()
@@ -352,14 +403,14 @@ class getData(QThread):
                 self.requiredData["bar_altitude"] = -10000
             try:
                 xAccl,yAccl,zAccl = self.getLSM303_accel(self.lsmbus)
-                xMag,yMag,zMag = self.getLSM303_heading(self.lsmbus)
+                #xMag,yMag,zMag = self.getLSM303_heading(self.lsmbus)
                 self.requiredData["sideTilt"] = self.get_x_rotation(xAccl,yAccl,zAccl)
                 self.requiredData["frontalInclination"] = self.get_y_rotation(xAccl,yAccl,zAccl)
             except:
                 self.requiredData["sideTilt"] = 0.0
                 self.requiredData["frontalInclination"] = 0.0
             try:
-                declination = (0,0)
+                #declination = (0,0)
                 headSurveys = 10
                 heading1 = 0
                 heading3 = 0
@@ -494,6 +545,8 @@ class getData(QThread):
                     if self.distancecode in line:
                         dist = float(re.sub("[^0-9]([0-9\.]*)","\g<1>",line.split(self.distancecode)[0]))
                         #print("Distance: "+str(dist))
+                        #Probably better to just keep laser on
+                        ser.write(self.ledoncommand)
                         lookfordistance = False
             except:
                 errcount = errcount + 1
@@ -530,7 +583,19 @@ class getData(QThread):
         return heading
 
     def get_heading(self, x,y,z, declination):
-      headingRad = math.atan2(y, x)
+      tmpX = x
+      tmpY = y
+      tmpZ = z
+      try:
+          if self.myparent.CompassCalibration != None:
+              #https://pololu.github.io/zumo-shield-arduino-library/_l_s_m303_8h_source.html
+              self.myparent.w.statusbar.showMessage("Calibration: "+str(self.myparent.CompassCalibration["1"]))
+              tmpX = tmpX - (self.myparent.CompassCalibration["1"]["MagMinX"] + self.myparent.CompassCalibration["1"]["MagMaxX"]) / 2
+              tmpY = tmpY - (self.myparent.CompassCalibration["1"]["MagMinY"] + self.myparent.CompassCalibration["1"]["MagMaxY"]) / 2
+              tmpZ = tmpZ - (self.myparent.CompassCalibration["1"]["MagMinZ"] + self.myparent.CompassCalibration["1"]["MagMaxZ"]) / 2
+      except:
+          pass
+      headingRad = math.atan2(tmpY, tmpX)
       (degrees, minutes) = declination
       declDegrees = degrees
       declMinutes = minutes
@@ -699,6 +764,7 @@ class MainWindow(QMainWindow):
         self.myCoordinates = {}
         self.branches = []
         self.mycfg = {}
+        self.CompassCalibration = None
         self.newCave()
         #Take note that Y axis on a graphicsview is flipped
         #self.w.pianta.scale(1,-1)
@@ -718,6 +784,7 @@ class MainWindow(QMainWindow):
         if isRPI:
             self.getDataThread = getData(self)
             self.getDataThread.GotScan.connect(self.LidarScanDone)
+            self.getDataThread.CompassCal.connect(self.CompasCalDone)
             self.getDataThread.start()
         #self.startLidarScan()
         self.firstdistance = 0.0
@@ -728,6 +795,8 @@ class MainWindow(QMainWindow):
         if isRPI:
             self.w.dxfmesh.setChecked(False)
         self.showDeviceInfo()
+        self.compassdialog = QDialog(self)
+        self.compassdialoglbl = QLabel("Starting compass calibration")
         self._projections = {}
         self.msl = 1013.0
 
@@ -819,7 +888,38 @@ class MainWindow(QMainWindow):
         #https://github.com/adafruit/Adafruit_LSM303DLH_Mag/blob/master/examples/calibration/calibration.ino
         #https://thecavepearlproject.org/2015/05/22/calibrating-any-compass-or-accelerometer-for-arduino/
         #https://www.instructables.com/Configure-read-data-calibrate-the-HMC5883L-digital/
+        if not isRPI:
+            print("Unable to get compass if not on RaspberryPi")
+            #return
         print("For high precision calibration, please look at this software: https://web.archive.org/web/20200221040955/http://www.varesano.net/blog/fabio/freeimu-magnetometer-and-accelerometer-calibration-gui-alpha-version-out")
+        if self.w.calibraBussola.isChecked():
+            self.compassdialog = QDialog(self)
+            self.compassdialoglbl.setText("Starting compass calibration")
+            layout = QVBoxLayout()
+            layout.addWidget(self.compassdialoglbl)
+            QBtn = QDialogButtonBox.Ok
+            buttonBox = QDialogButtonBox(QBtn)
+            buttonBox.accepted.connect(self.compassdialog.accept)
+            layout.addWidget(buttonBox)
+            self.compassdialog.setLayout(layout)
+            self.compassdialog.show()
+            self.w.manualMode.setChecked(True)
+        #print("Loading data...")
+        #time.sleep(0.5)
+        #QApplication.processEvents()
+        #time.sleep(10)
+        #lbl.setText("Sto lavorando\nFunziona")
+        
+    def CompasCalDone(self, calData):
+        self.compassdialog.hide()
+        print("Received compass calibration data:")
+        print(calData)
+        self.mycfg["CompassCalibration"] = calData
+        self.savePersonalCFG()
+        print("Writing configuration, please reboot Charlotte.")
+        self.w.calibraBussola.setChecked(False)
+        return
+        
 
     def newCave(self):
         self.w.fromP.setText("0")
@@ -865,6 +965,10 @@ class MainWindow(QMainWindow):
             self.w.decMin.setValue(self.mycfg['declination'][1])
         except:
             pass
+        try:
+            self.CompassCalibration = self.mycfg['CompassCalibration']
+        except:
+            self.CompassCalibration = None
         self.w.outputfolder.setText(self.mycfg["outputfolder"])
         if self.mycfg["startfromlastcave"]=='True':
             self.w.openlastcave.setChecked(True)
@@ -2337,4 +2441,3 @@ if __name__ == "__main__":
     w.setFixedSize(640,480)
     w.show()
     sys.exit(app.exec_())
-    
