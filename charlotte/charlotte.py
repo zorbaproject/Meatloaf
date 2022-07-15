@@ -90,7 +90,7 @@ class hmc5883l:
         8.10: [7, 4.35],
     }
 
-    def __init__(self, port=1, address=0x1E, gauss=1.3, declination=(0,0)):
+    def __init__(self, port=1, address=0x1E, gauss=1.3, declination=(0,0), mycalibr=None):
         self.hmcbus = smbus.SMBus(port)
         self.address = address
 
@@ -98,6 +98,8 @@ class hmc5883l:
         self.__declDegrees = degrees
         self.__declMinutes = minutes
         self.__declination = (degrees + minutes / 60) * math.pi / 180
+        
+        self.CompassCalibration = mycalibr
 
         (reg, self.__scale) = self.__scales[gauss]
         self.hmcbus.write_byte_data(self.address, 0x00, 0x70) # 8 Average, 15 Hz, normal measurement
@@ -128,6 +130,16 @@ class hmc5883l:
 
     def heading(self):
         (x, y, z) = self.axes()
+        
+        try:
+          if self.CompassCalibration != None:
+              #https://pololu.github.io/zumo-shield-arduino-library/_l_s_m303_8h_source.html
+              x = x - (self.CompassCalibration["MagMinX"] + self.CompassCalibration["MagMaxX"]) / 2
+              y = y - (self.CompassCalibration["MagMinY"] + self.CompassCalibration["MagMaxY"]) / 2
+              z = z - (self.CompassCalibration["MagMinZ"] + self.CompassCalibration["MagMaxZ"]) / 2
+        except:
+          pass
+        
         headingRad = math.atan2(y, x)
         headingRad += self.__declination
 
@@ -280,7 +292,7 @@ class getData(QThread):
             print("Unable to find LSM303DLH compass and inclinometer.")
             self.lsmbus = None
         try:
-            self.compass3 = hmc5883l(port = 3, gauss = 4.7, declination = self.declination)
+            self.compass3 = hmc5883l(port = 3, gauss = 4.7, declination = self.declination, mycalibr = self.myparent.mycfg["CompassCalibration"]["3"])
         except:
             print("Unable to find HCM5883L compass and inclinometer.")
             self.compass3 = None
@@ -302,6 +314,7 @@ class getData(QThread):
         self.lidarAddress = self.findUSBaddress("cp210x")
         # "dmesg | grep ': cp210x converter detected' |sed 's/\[.*\] cp210x \(.*\):.*/\1/g' | tail -n1"
         print("Lidar Address: "+self.lidarAddress)
+        self.msl = 1013.0
         
 
 
@@ -334,24 +347,61 @@ class getData(QThread):
         while True:
             #Compass calibration mode
             if self.myparent.w.calibraBussola.isChecked():
-                headCalSurveys = 300
+                headCalSurveys = 200
                 while True:
                     if self.myparent.w.manualMode.isChecked():
                         break
                     time.sleep(0.1)
                 try:
-                    self.myparent.compassdialoglbl.setText("Start moving compass...")
-                    #self.myparent.compassdialoglbl.setText("Please move compass all around for "+str(int(headCalSurveys*0.1))" seconds")
-                    heading1max = -360
-                    heading3max = -360
-                    heading1min = 360
-                    heading3min = 360
-                    MagMinX = 1000000
-                    MagMaxX = -1000000
-                    MagMinY = 1000000
-                    MagMaxY = -1000000
-                    MagMinZ = 1000000
-                    MagMaxZ = -1000000
+                    #self.myparent.compassdialoglbl.setText("Start moving compass...")
+                    try:
+                        MagMinX = int(self.myparent.CompassCalibration["1"]["MagMinX"])
+                    except:
+                        MagMinX = 1000000
+                    try:
+                        MagMaxX = int(self.myparent.CompassCalibration["1"]["MagMaxX"])
+                    except:
+                        MagMaxX = -1000000
+                    try:
+                        MagMinY = int(self.myparent.CompassCalibration["1"]["MagMinY"])
+                    except:
+                        MagMinY = 1000000
+                    try:
+                        MagMaxY = int(self.myparent.CompassCalibration["1"]["MagMaxY"])
+                    except:
+                        MagMaxY = -1000000
+                    try:
+                        MagMinZ = int(self.myparent.CompassCalibration["1"]["MagMinZ"])
+                    except:
+                        MagMinZ = 1000000
+                    try:
+                        MagMaxZ = int(self.myparent.CompassCalibration["1"]["MagMaxZ"])
+                    except:
+                        MagMaxZ = -1000000
+                    try:
+                        Mag3MinX = int(self.myparent.CompassCalibration["1"]["Mag3MinX"])
+                    except:
+                        Mag3MinX = 1000000
+                    try:
+                        Mag3MaxX = int(self.myparent.CompassCalibration["1"]["Mag3MaxX"])
+                    except:
+                        Mag3MaxX = -1000000
+                    try:
+                        Mag3MinY = int(self.myparent.CompassCalibration["1"]["Mag3MinY"])
+                    except:
+                        Mag3MinY = 1000000
+                    try:
+                        Mag3MaxY = int(self.myparent.CompassCalibration["1"]["Mag3MaxY"])
+                    except:
+                        Mag3MaxY = -1000000
+                    try:
+                        Mag3MinZ = int(self.myparent.CompassCalibration["1"]["Mag3MinZ"])
+                    except:
+                        Mag3MinZ = 1000000
+                    try:
+                        Mag3MaxZ = int(self.myparent.CompassCalibration["1"]["Mag3MaxZ"])
+                    except:
+                        Mag3MaxZ = -1000000
                     #https://learn.adafruit.com/lsm303-accelerometer-slash-compass-breakout/calibration?view=all
                     #https://github.com/adafruit/Adafruit_LSM303DLH_Mag/blob/master/examples/calibration/calibration.ino
                     #https://thecavepearlproject.org/2015/05/22/calibrating-any-compass-or-accelerometer-for-arduino/
@@ -365,15 +415,25 @@ class getData(QThread):
                         if zMag < MagMinZ: MagMinZ = zMag
                         if zMag > MagMaxZ: MagMaxZ = zMag
                         #heading1 = self.get_heading(xMag,yMag,zMag, self.declination)
-                        heading3 = self.compass3.heading()
-                        if heading3 < heading3min: heading3min = heading3
-                        if heading3 > heading3max: heading3max = heading3
-                        self.myparent.compassdialoglbl.setText("Please move compass all around for "+str(int((headCalSurveys-i)*0.1))+" seconds \n"+str([xMag,yMag,zMag]))
+                        xMag3,yMag3,zMag3 = self.compass3.axes()
+                        if xMag3 == None: xMag3 = 0
+                        if yMag3 == None: yMag3 = 0
+                        if zMag3 == None: zMag3 = 0
+                        if xMag3 < Mag3MinX: Mag3MinX = xMag3
+                        if xMag3 > Mag3MaxX: Mag3MaxX = xMag3
+                        if yMag3 < Mag3MinY: Mag3MinY = yMag3
+                        if yMag3 > Mag3MaxY: Mag3MaxY = yMag3
+                        if zMag3 < Mag3MinZ: Mag3MinZ = zMag3
+                        if zMag3 > Mag3MaxZ: Mag3MaxZ = zMag3
+                        #heading3 = self.compass3.heading()                        
+                        self.myparent.compassdialoglbl.setText("Please move compass all around for "+str(int((headCalSurveys-i)*0.1))+" seconds \n"+str([xMag,yMag,zMag])+" "+str([xMag3,yMag3,zMag3]))
                         time.sleep(0.1)
-                    mycompasscal = {"1":{"MagMinX":MagMinX,"MagMaxX":MagMaxX,"MagMinY":MagMinY,"MagMaxY":MagMaxY,"MagMinZ":MagMinZ,"MagMaxZ":MagMaxZ}, "3":{"max":heading3max,"min":heading3min}}
+                    mycompasscal = {"1":{"MagMinX":MagMinX,"MagMaxX":MagMaxX,"MagMinY":MagMinY,"MagMaxY":MagMaxY,"MagMinZ":MagMinZ,"MagMaxZ":MagMaxZ}, 
+                                    "3":{"MagMinX":int(Mag3MinX),"MagMaxX":int(Mag3MaxX),"MagMinY":int(Mag3MinY),"MagMaxY":int(Mag3MaxY),"MagMinZ":int(Mag3MinZ),"MagMaxZ":int(Mag3MaxZ)}}
                     self.myparent.compassdialoglbl.setText("Done")
                     self.CompassCal.emit(mycompasscal)
                 except:
+                    self.myparent.compassdialoglbl.setText("Error calibrating compass")
                     pass
                 continue
             #Manual mode
@@ -496,11 +556,12 @@ class getData(QThread):
         return temperature, hpa_pressure, altitude_adjusted
 
 
-    def calibrateBMP(Self):
+    def calibrateBMP(self, known_alt = 0.0):
+        t, hpa_pressure, alt = self.readBMP()
         msl = (hpa_pressure /(pow((1-(known_alt/44330.0)),5.255)))
         self.msl = msl
         #Add to configure
-        pass
+        return msl
 
     def stopRangefinder(self):
         line = ""
@@ -589,7 +650,7 @@ class getData(QThread):
       try:
           if self.myparent.CompassCalibration != None:
               #https://pololu.github.io/zumo-shield-arduino-library/_l_s_m303_8h_source.html
-              self.myparent.w.statusbar.showMessage("Calibration: "+str(self.myparent.CompassCalibration["1"]))
+              #self.myparent.w.statusbar.showMessage("Calibration: "+str(self.myparent.CompassCalibration["1"]))
               tmpX = tmpX - (self.myparent.CompassCalibration["1"]["MagMinX"] + self.myparent.CompassCalibration["1"]["MagMaxX"]) / 2
               tmpY = tmpY - (self.myparent.CompassCalibration["1"]["MagMinY"] + self.myparent.CompassCalibration["1"]["MagMaxY"]) / 2
               tmpZ = tmpZ - (self.myparent.CompassCalibration["1"]["MagMinZ"] + self.myparent.CompassCalibration["1"]["MagMaxZ"]) / 2
@@ -753,6 +814,8 @@ class MainWindow(QMainWindow):
         self.w.zoom.valueChanged.connect(self.zoomDrawings)
         self.w.setDeclination.clicked.connect(self.setDeclination)
         self.w.calibraBussola.clicked.connect(self.calibraBussola)
+        self.w.setMsl.clicked.connect(self.setMsl)
+        self.w.setAlt.clicked.connect(self.setAlt)
         #self.w.tempImpostata.valueChanged.connect(self.setTempImp)
         self.w.piantacombo.currentTextChanged.connect(self.piantacombo)
         self.w.spaccatocombo.currentTextChanged.connect(self.spaccatocombo)
@@ -777,6 +840,7 @@ class MainWindow(QMainWindow):
         self.csvheader = ["From", "To", "SideTilt", "FrontalInclination", "heading", "distance", "left", "right", "up", "down", "latitude", "longitude", "altitude", "notes"]
         print("UI loaded")
         QApplication.processEvents()
+        self.msl = 1013.0
         self.loadPersonalCFG()
         if os.path.isfile(self.mycfg['lastcave']) and self.mycfg['startfromlastcave']=='True':
             self.openFile()
@@ -785,6 +849,7 @@ class MainWindow(QMainWindow):
             self.getDataThread = getData(self)
             self.getDataThread.GotScan.connect(self.LidarScanDone)
             self.getDataThread.CompassCal.connect(self.CompasCalDone)
+            self.getDataThread.msl = self.msl
             self.getDataThread.start()
         #self.startLidarScan()
         self.firstdistance = 0.0
@@ -798,7 +863,6 @@ class MainWindow(QMainWindow):
         self.compassdialog = QDialog(self)
         self.compassdialoglbl = QLabel("Starting compass calibration")
         self._projections = {}
-        self.msl = 1013.0
 
 
     #TODO: eventfilter for keypad https://stackoverflow.com/questions/27113140/qt-keypress-event-on-qlineedit
@@ -897,9 +961,10 @@ class MainWindow(QMainWindow):
             self.compassdialoglbl.setText("Starting compass calibration")
             layout = QVBoxLayout()
             layout.addWidget(self.compassdialoglbl)
-            QBtn = QDialogButtonBox.Ok
+            QBtn = QDialogButtonBox.Cancel
             buttonBox = QDialogButtonBox(QBtn)
-            buttonBox.accepted.connect(self.compassdialog.accept)
+            #buttonBox.accepted.connect(self.compassdialog.accept)
+            buttonBox.accepted.connect(self.CompasCalDone)
             layout.addWidget(buttonBox)
             self.compassdialog.setLayout(layout)
             self.compassdialog.show()
@@ -910,16 +975,31 @@ class MainWindow(QMainWindow):
         #time.sleep(10)
         #lbl.setText("Sto lavorando\nFunziona")
         
-    def CompasCalDone(self, calData):
+    def CompasCalDone(self, calData = None):
         self.compassdialog.hide()
         print("Received compass calibration data:")
         print(calData)
-        self.mycfg["CompassCalibration"] = calData
-        self.savePersonalCFG()
-        print("Writing configuration, please reboot Charlotte.")
+        if calData != None:
+            self.mycfg["CompassCalibration"] = calData
+            self.savePersonalCFG()
+            self.w.statusbar.showMessage("Writing configuration, please reboot Charlotte.")
         self.w.calibraBussola.setChecked(False)
         return
         
+    def setAlt(self):
+        alt = self.w.actualAlt.value()
+        msl = self.getDataThread.calibrateBMP(alt)
+        self.msl = msl
+        self.mycfg["msl"] = self.msl
+        self.savePersonalCFG()
+        self.w.actualMsl.setValue(self.msl)
+        
+    def setMsl(self):
+        msl = self.w.actualMsl.value()
+        self.msl = msl
+        self.getDataThread.msl = self.msl
+        self.mycfg["msl"] = self.msl
+        self.savePersonalCFG()
 
     def newCave(self):
         self.w.fromP.setText("0")
@@ -969,6 +1049,12 @@ class MainWindow(QMainWindow):
             self.CompassCalibration = self.mycfg['CompassCalibration']
         except:
             self.CompassCalibration = None
+        try:
+            self.msl = self.mycfg["msl"]
+            self.w.actualMsl.setValue(self.msl)
+        except:
+            print("Error setting MSL value")
+            pass
         self.w.outputfolder.setText(self.mycfg["outputfolder"])
         if self.mycfg["startfromlastcave"]=='True':
             self.w.openlastcave.setChecked(True)
